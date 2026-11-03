@@ -15,7 +15,7 @@ locals {
 
   rules = {
     for id, r in local.rules_all : id => r
-    if var.deploy_rules && r.deployable && !contains(var.disabled_rules, id)
+    if r.deployable && contains(var.enabled_rules, id) && !contains(var.disabled_rules, id)
   }
 }
 
@@ -58,6 +58,21 @@ resource "azurerm_sentinel_alert_rule_scheduled" "rule" {
 
   alert_details_override {
     severity_column_name = each.value.severity_column
+    display_name_format  = try(each.value.alert_name_format, null)
+  }
+
+  dynamic "entity_mapping" {
+    for_each = try(each.value.entities, [])
+    content {
+      entity_type = entity_mapping.value.type
+      dynamic "field_mapping" {
+        for_each = entity_mapping.value.fields
+        content {
+          identifier  = field_mapping.key
+          column_name = field_mapping.value
+        }
+      }
+    }
   }
 
   incident {

@@ -31,6 +31,7 @@ validate` had no deprecation warnings.
 | The attack surface itself | CKV_AZURE_137 (ACR admin user), CKV_AZURE_50 (VM extensions) | The ACR admin user is what P-13 lists. Run Command (X-08) needs the VM agent. Both resources are opt-in, empty and deleted after each run. |
 | Free / Basic tier limits | CKV_AZURE_211, 212, 225, 214 (App Service plan and Always On); CKV_AZURE_139, 163 to 167, 233, 237 (ACR Premium features) | The opt-in targets use the cheapest tiers on purpose and live for one replay run. |
 | No application on the site | CKV_AZURE_13, 17, 88, 213, 222 | The web app serves the default page only. X-10 targets the control plane. |
+| GitHub ID-based OIDC subjects (added 2026-11-03) | CKV_AZURE_249 on both federated credentials | False positive: checkov's repo pattern expects `owner/repo`; GitHub's immutable subjects are `owner@id/repo@id`. Each subject pins one repository and one branch or environment, with no wildcard. |
 | One-run container | CKV_AZURE_98 (container group in a VNet) | The group has no IP address at all (`ip_address_type = "None"`). |
 
 ## tflint ignore

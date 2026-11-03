@@ -1,6 +1,6 @@
 # `storage-keys-listed`
 
-**Status: draft, not yet validated.** Tier: `core`. Validation: `ci`.
+**Status: draft, not yet validated.** Deployed for validation in Phase 4 (2026-11-03). Tier: `core`. Validation: `ci`.
 
 Fenrir operations: P-12 (IDs from [FENRIR-OPERATIONS.md](../../../docs/FENRIR-OPERATIONS.md)).
 
@@ -14,7 +14,12 @@ See [rule.kql](rule.kql). Source: the draft in [RULE-PROPOSALS.md](../../../docs
 
 ## Changes from the draft
 
-- None yet. Phase 3 lab evidence may change field names and status strings.
+- **Phase 4 (2026-11-03): duplicate alerts.** Rows are "new" only if `ingestion_time()` falls in the last run interval (`Frequency = 5m`, equal to the rule frequency). Each row is processed by exactly one run, so one event raises one alert instead of up to 12. Pattern from Microsoft's "Handle ingestion delay in scheduled analytics rules".
+- **Phase 4: baseline uses ingestion time too.** History is every row ingested before the current interval (up to 14 days), so a row that already alerted becomes "known" for the next run.
+- **Phase 4: alert title and entities.** `alert_name_format` puts the caller in the alert title; `Account` (AadUserId = caller object ID) and `AzureResource` entities are mapped so incidents show who and what.
+- **Branch B** now requires at least one new row in the current interval, and joins back on all rows of the 1-hour window.
+- **Branch validation:** C is exercised by the CI replay (fresh account per run). A (managed identity from a new IP) and B (3+ accounts) are not; A is for the manual purple-team run.
+- **Lab evidence (2026-11-03):** an operator running Terraform locally produced `listKeys` on the state account and hit branch C. Handled with a narrow watchlist entry (`trusted_operators`), not by changing the query.
 
 ## False positives, false negatives, severity
 

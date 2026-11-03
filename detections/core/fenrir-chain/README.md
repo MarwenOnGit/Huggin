@@ -1,6 +1,6 @@
 # `fenrir-chain`
 
-**Status: draft, not yet validated.** Tier: `core`. Validation: `ci`.
+**Status: draft, not yet validated.** Deployed for validation in Phase 4 (2026-11-03). Tier: `core`. Validation: `ci`.
 
 Fenrir operations: X-08, X-10, X-13, X-14, P-12, P-13 (IDs from [FENRIR-OPERATIONS.md](../../../docs/FENRIR-OPERATIONS.md)).
 
@@ -14,6 +14,10 @@ See [rule.kql](rule.kql). Source: the draft in [RULE-PROPOSALS.md](../../../docs
 
 ## Changes from the draft
 
+- **Phase 4 (2026-11-03): duplicate alerts.** Rows are "new" only if `ingestion_time()` falls in the last run interval (`Frequency = 5m`, equal to the rule frequency). Each row is processed by exactly one run, so one event raises one alert instead of up to 12. Pattern from Microsoft's "Handle ingestion delay in scheduled analytics rules".
+- **Phase 4: alert title and entities.** `alert_name_format` puts the caller in the alert title; `Account` (AadUserId = caller object ID) and `AzureResource` entities are mapped so incidents show who and what.
+- **Fires only when the chain gets a new row** in the current interval (`NewRows > 0` or a new managed-identity row), so a chain is not re-alerted every 5 minutes for 4 hours. Each new stage re-raises it once, which is intended.
+- `TargetResource` is the first target of the chain, for the `AzureResource` entity.
 - Removed the `SigninLogs` device code boost. Without Entra ID P1/P2 the table does not exist in the workspace, and a scheduled rule referencing a missing table fails to deploy. If P1/P2 is enabled later, add this back as an identity-tier variant:
 
 ```kql

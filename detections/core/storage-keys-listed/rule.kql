@@ -1,32 +1,40 @@
 // Draft, not yet validated.
-let Lookback = 1h;
-let Baseline = 14d;
-let Op = "MICROSOFT.STORAGE/STORAGEACCOUNTS/LISTKEYS/ACTION";
+// Phase 4 version (2026-11-03). Changes from RULE-PROPOSALS.md: see README.md.
+// Storage account key retrieval in three suspicious shapes:
+//   A: a managed identity acting from an IP it has never used (14 days);
+//   B: one caller listing keys on 3 or more accounts in 1 hour;
+//   C: a new (caller, account) pair, outside deployments and trusted automation.
+let Frequency = 5m;   // must equal rule.yaml frequency: rows ingested in the last run are "new"
+let Window = 1h;      // branch B spread window
+let Baseline = 14d;   // must equal rule.yaml lookback
 let OidClaim = "http://schemas.microsoft.com/identity/claims/objectidentifier";
-let PairHistory = AzureActivity
-    | where TimeGenerated between (ago(Baseline) .. ago(Lookback))
-    | where OperationNameValue =~ Op
-    | extend CallerOid = tolower(tostring(Claims_d[OidClaim])),
-             Account   = extract(@"^(.*/storageaccounts/[^/]+)", 1, tolower(_ResourceId))
+let Op = "MICROSOFT.STORAGE/STORAGEACCOUNTS/LISTKEYS/ACTION";
+let Activity = HuginnActivity(pack_array(Op), Baseline)
+    | extend Account = extract(@"^(.*/storageaccounts/[^/]+)", 1, Rid);
+let New = Activity
+    | where IngestedAt > ago(Frequency);
+let PairHistory = Activity
+    | where IngestedAt <= ago(Frequency)
     | distinct CallerOid, Account;
 let MiIpHistory = AzureActivity
-    | where TimeGenerated between (ago(Baseline) .. ago(Lookback))
+    | where TimeGenerated > ago(Baseline)
+    | where ingestion_time() <= ago(Frequency)
     | where isnotempty(tostring(Claims_d.xms_mirid))
     | extend CallerOid = tolower(tostring(Claims_d[OidClaim]))
     | distinct CallerOid, CallerIpAddress;
-let Recent = HuginnActivity(dynamic(["MICROSOFT.STORAGE/STORAGEACCOUNTS/LISTKEYS/ACTION"]), Lookback)
-    | extend Account = extract(@"^(.*/storageaccounts/[^/]+)", 1, Rid);
-let BranchA = Recent
+let BranchA = New
     | where CallerKind == "ManagedIdentity"
     | join kind=leftanti MiIpHistory on CallerOid, CallerIpAddress
     | extend Branch = "A: managed identity from new IP";
-let BranchB = Recent
-    | where not(IsTrusted)
-    | summarize Accounts = dcount(Account) by CallerOid
-    | where Accounts >= 3
-    | join kind=inner Recent on CallerOid
+let Spread = Activity
+    | where TimeGenerated > ago(Window) and not(IsTrusted);
+let BranchB = Spread
+    | summarize Accounts = dcount(Account), NewRows = countif(IngestedAt > ago(Frequency)) by CallerOid
+    | where Accounts >= 3 and NewRows > 0
+    | project CallerOid
+    | join kind=inner Spread on CallerOid
     | extend Branch = "B: 3+ accounts in 1h";
-let BranchC = Recent
+let BranchC = New
     | where not(IsTrusted) and not(InDeployment)
     | join kind=leftanti PairHistory on CallerOid, Account
     | extend Branch = "C: new caller-account pair";
@@ -36,4 +44,5 @@ union BranchA, BranchB, BranchC
             Ips = make_set(CallerIpAddress, 10),
             FirstSeen = min(TimeGenerated), LastSeen = max(TimeGenerated)
     by Caller, CallerOid, CallerKind, AppId, SubscriptionId
-| extend Severity = iff(set_has_element(Branches, "A: managed identity from new IP"), "High", "Medium")
+| extend Severity = iff(set_has_element(Branches, "A: managed identity from new IP"), "High", "Medium"),
+         TargetResource = tostring(Accounts[0])

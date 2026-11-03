@@ -1,0 +1,165 @@
+# Benign replays of Fenrir-shaped actions, then proof that Sentinel raised the expected alerts.
+# Red if any requested rule did not fire within the timeout.
+#
+# Identities (docs/adr/0003):
+#   drift, validate  -> huginn-github-deploy (main branch subject; watchlisted for Terraform refresh)
+#   replay, cleanup  -> huginn-lab-attacker  (lab-replay environment subject; never watchlisted)
+#
+# This workflow does NOT apply Terraform. It checks that the deployed rules match the code
+# (terraform plan must show no changes). Applies stay manual and reviewed (Phase 2 rule).
+name: replay
+
+on:
+  workflow_dispatch:
+    inputs:
+      rules:
+        description: "Comma-separated rule IDs (validation: ci only)"
+        required: true
+        default: "logicapp-callback-listed,storage-keys-listed,fenrir-chain"
+      timeout_minutes:
+        description: "Minutes to wait for alerts"
+        required: true
+        default: "30"
+  schedule:
+    - cron: "30 2 * * *" # nightly, 02:30 UTC
+
+permissions: {}
+
+concurrency:
+  group: huginn-lab
+  cancel-in-progress: false
+
+env:
+  RULES: ${{ inputs.rules || 'logicapp-callback-listed,storage-keys-listed,fenrir-chain' }}
+  TIMEOUT_MINUTES: ${{ inputs.timeout_minutes || '30' }}
+  TF_VERSION: "1.15.6"
+
+jobs:
+  drift:
+    name: Deployed rules match the code
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    timeout-minutes: 15
+    env:
+      ARM_USE_OIDC: "true"
+      ARM_CLIENT_ID: ${{ vars.AZURE_DEPLOY_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+      - name: terraform plan (sentinel, lab) must show no changes
+        run: |
+          set -euo pipefail
+          for stack in sentinel lab; do
+            terraform -chdir=infra/$stack init -input=false \
+              -backend-config=../shared/backend.hcl -backend-config=key=$stack.tfstate > /dev/null
+            set +e
+            terraform -chdir=infra/$stack plan -input=false -no-color -detailed-exitcode > plan-$stack.txt
+            code=$?
+            set -e
+            if [ "$code" = 2 ]; then
+              echo "::error::infra/$stack has changes not applied: deployed rules may not match the code"
+              grep -E '^  # |Plan:' plan-$stack.txt || true
+              exit 1
+            elif [ "$code" != 0 ]; then
+              tail -30 plan-$stack.txt; exit 1
+            fi
+            echo "infra/$stack: no changes"
+          done
+
+  replay:
+    name: Benign replays as huginn-lab-attacker
+    needs: drift
+    runs-on: ubuntu-latest
+    environment: lab-replay
+    permissions:
+      id-token: write
+      contents: read
+    timeout-minutes: 20
+    outputs:
+      started: ${{ steps.run.outputs.started }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ vars.AZURE_ATTACKER_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Run replays
+        id: run
+        run: |
+          set -euo pipefail
+          started="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "started=$started" >> "$GITHUB_OUTPUT"
+          scripts/replay/run.sh "$RULES"
+          {
+            echo "### Replay"
+            echo "- Rules: \`$RULES\`"
+            echo "- Started (UTC): $started"
+            echo "- Finished (UTC): $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  cleanup:
+    name: Delete replay resources (safety net)
+    needs: replay
+    if: always()
+    runs-on: ubuntu-latest
+    environment: lab-replay
+    permissions:
+      id-token: write
+      contents: read
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ vars.AZURE_ATTACKER_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - run: scripts/replay/cleanup.sh
+
+  validate:
+    name: Sentinel raised the expected alerts
+    needs: replay
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ vars.AZURE_DEPLOY_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Install the log-analytics extension
+        run: az extension add -n log-analytics --only-show-errors
+      - name: Wait for alerts
+        env:
+          STARTED: ${{ needs.replay.outputs.started }}
+        run: |
+          set -euo pipefail
+          oid="$(python3 -c 'import json; print(json.load(open("infra/shared/bootstrap.json"))["attacker_principal_object_id"])')"
+          python3 tests/validate_alert.py --since "$STARTED" --rules "$RULES" \
+            --caller-oid "$oid" --timeout-minutes "$TIMEOUT_MINUTES"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: validate-${{ github.run_id }}
+          path: results/validate.json
+          if-no-files-found: warn

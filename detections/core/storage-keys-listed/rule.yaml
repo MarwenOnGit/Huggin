@@ -16,10 +16,20 @@ frequency: PT5M
 # lookback: Sentinel query period, at most P14D; must cover the query's longest baseline
 lookback: P14D
 trigger_threshold: 0
+# alert_name_format: per-alert title; {{Column}} placeholders come from the query output
+alert_name_format: "Huginn: storage account keys listed by {{Caller}}"
+entities:
+  - type: Account
+    fields:
+      AadUserId: CallerOid
+      FullName: Caller
+  - type: AzureResource
+    fields:
+      ResourceId: TargetResource
 mitre:
   tactics: [CredentialAccess]
   techniques: [T1552]
 branches:
   A-mi-new-ip: manual     # needs a stolen-identity scenario; covered by the purple-team run
-  B-3plus-accounts: ci
+  B-3plus-accounts: manual  # one fresh account per replay does not exercise it
   C-new-pair: ci

@@ -11,6 +11,13 @@ locals {
   subscription  = "/subscriptions/${var.subscription_id}"
   oidc_issuer   = "https://token.actions.githubusercontent.com"
   oidc_audience = ["api://AzureADTokenExchange"]
+
+  # GitHub's immutable, ID-based OIDC subject: repo:<owner>@<owner_id>/<repo>@<repo_id>:...
+  # The repository uses it (use_immutable_subject = true), so name-only subjects are rejected
+  # with AADSTS700213. See docs/adr/0003.
+  github_owner          = split("/", var.github_repository)[0]
+  github_repo_name      = split("/", var.github_repository)[1]
+  github_subject_prefix = "repo:${local.github_owner}@${var.github_owner_id}/${local.github_repo_name}@${var.github_repository_id}"
 }
 
 # Resource groups. Created here so role assignments can be scoped to them before the

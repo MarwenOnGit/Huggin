@@ -1,6 +1,6 @@
 # `logicapp-callback-listed`
 
-**Status: draft, not yet validated.** Tier: `core`. Validation: `ci`.
+**Status: draft, not yet validated.** Deployed for validation in Phase 4 (2026-11-03). Tier: `core`. Validation: `ci`.
 
 Fenrir operations: X-13 (IDs from [FENRIR-OPERATIONS.md](../../../docs/FENRIR-OPERATIONS.md)).
 
@@ -14,7 +14,11 @@ See [rule.kql](rule.kql). Source: the draft in [RULE-PROPOSALS.md](../../../docs
 
 ## Changes from the draft
 
-- None yet. Phase 3 lab evidence may change field names and status strings.
+- **Phase 4 (2026-11-03): duplicate alerts.** Rows are "new" only if `ingestion_time()` falls in the last run interval (`Frequency = 5m`, equal to the rule frequency). Each row is processed by exactly one run, so one event raises one alert instead of up to 12. Pattern from Microsoft's "Handle ingestion delay in scheduled analytics rules".
+- **Phase 4: baseline uses ingestion time too.** History is every row ingested before the current interval (up to 14 days), so a row that already alerted becomes "known" for the next run.
+- **Phase 4: alert title and entities.** `alert_name_format` puts the caller in the alert title; `Account` (AadUserId = caller object ID) and `AzureResource` entities are mapped so incidents show who and what.
+- **Lab evidence X-13 (2026-11-03):** `_ResourceId` is the trigger, so the rule keys on the workflow extracted from it (already in the draft). The failed attempt on a missing trigger is counted too: an attempt is still a signal.
+- Uses `HuginnActivity` for both the baseline and the recent rows, instead of a separate raw `AzureActivity` query.
 
 ## False positives, false negatives, severity
 

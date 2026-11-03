@@ -25,9 +25,9 @@ Last updated: 2026-11-03 (Phase 2 applied).
 | 0. Plan and prerequisites | done | 2026-11-03 |
 | 1. Repo layout | done (local only) | 2026-11-03 |
 | 2. Infrastructure | **Applied**: bootstrap (20), sentinel (18, no rules: `deploy_rules = false`), lab always-on (5). Second plan of sentinel and lab: no changes. | 2026-11-03 |
-| 3. Lab evidence | started. Blocked on (a) the AzureActivity export gap and (b) the GitHub `lab-replay` environment and variables, which the API does not show yet. | 2026-11-03 |
-| 4. Detections | drafts copied into rule folders, none validated | |
-| 5. Testing | static tests only (`make test`) | |
+| 3. Lab evidence | X-13 and P-12 captured as the lab attacker (`lab-evidence/`). Items 1, 3, 5, 8, 10 answered; 2 answered except managed identity. OIDC subject fix applied. Export gap resolved for new events. Still to do: X-08, X-10, X-14, P-13 (opt-in resources), item 4, item 6, item 7. | 2026-11-03 |
+| 4. Detections | Demo set (`logicapp-callback-listed`, `storage-keys-listed`, `fenrir-chain` multi-stage) rewritten with ingestion-time dedup, tested ad hoc on real rows (fire with a wide window, silent with the real 5-minute window). Sentinel plan ready (3 rules, function replaced, 6 operator watchlist rows), **not applied**. Opt-in batch (X-08, X-10, X-14, P-13) postponed until after 11 November. | 2026-11-03 |
+| 5. Testing | static tests extended; `replay.yml` (drift check, replays on fresh resources, cleanup, alert validation) and `tests/validate_alert.py` written, **not run yet**. Baseline-trap test (two runs in a row) not done. | 2026-11-03 |
 | 6. Documentation | not started | |
 
 ## Rules
@@ -53,16 +53,16 @@ Last updated: 2026-11-03 (Phase 2 applied).
 
 | # | Question | Rules that depend on it | Answer | Evidence |
 |---|---|---|---|---|
-| 1 | Exact `ActivityStatusValue` strings (`Start`/`Success`/`Failure` or `Started`/`Succeeded`/`Failed`) | all core | partial: `Start` and `Success` seen on 2026-11-03 for a non-Fenrir write. Still to confirm for the six Fenrir actions and a failure. | |
-| 2 | Does `Claims_d` keep `idtyp`, `appid`, `xms_mirid` and the object ID claim? | `HuginnActivity`, all core, `mi-control-plane-new-ip` | preliminary (user caller, raw API): `idtyp`, `appid` and `objectidentifier` are present; `xms_mirid` absent as expected for a user. Service principal: needs the evidence workflow. Managed identity: needs a managed-identity caller, which Huginn CI must not create (no MI token replays), so it moves to the manual purple-team run. | |
-| 3 | Is `Caller` the object ID or the app ID for service principals and managed identities? | all core | open. For users, `Caller` is the UPN (raw API, 2026-11-03). | |
+| 1 | Exact `ActivityStatusValue` strings (`Start`/`Success`/`Failure` or `Started`/`Succeeded`/`Failed`) | all core | **Answered (workspace, 2026-11-03):** `ActivityStatusValue` is `Start`, `Success`, `Failure`. `ActivitySubstatusValue` is `OK` on success, `NotFound` on the failed X-13 probe. (The raw Activity log API shows `Started`/`Succeeded`/`Failed` instead.) The drafts accept both forms, so no change needed. | `lab-evidence/X-13.json`, `lab-evidence/P-12.json` (run 2026-11-03T20:44Z) |
+| 2 | Does `Claims_d` keep `idtyp`, `appid`, `xms_mirid` and the object ID claim? | `HuginnActivity`, all core, `mi-control-plane-new-ip` | **Answered for service principals (workspace):** `Claims_d` keeps `idtyp` (`app`), `appid` (client ID) and the object ID under `http://schemas.microsoft.com/identity/claims/objectidentifier`. For users (raw API): `idtyp`, `appid`, `objectidentifier` present. `xms_mirid`: absent for both, as expected. **Managed identity: open**, moved to the manual purple-team run (Huginn CI must not replay MI tokens). | `lab-evidence/X-13.json`, `lab-evidence/P-12.json` (run 2026-11-03T20:44Z) |
+| 3 | Is `Caller` the object ID or the app ID for service principals and managed identities? | all core | **Answered (workspace):** for a service principal, `Caller` is the **service principal object ID** (`380b1f3c-...`), not the app ID (`a9d1d6db-...`, which is in `Claims_d.appid`). For a user, `Caller` is the UPN. Managed identity: open (purple-team run). | `lab-evidence/X-13.json`, `lab-evidence/P-12.json` (run 2026-11-03T20:44Z) |
 | 4 | Do X-10 rows keep `/config/publishingcredentials` in `_ResourceId` or `Properties_d.entity`? | `appservice-publish-creds` | open | |
-| 5 | Is X-13's `_ResourceId` the trigger or the workflow? | `logicapp-callback-listed` | preliminary: **the trigger** (`.../workflows/<name>/triggers/manual`), seen in the raw Activity log API for a user caller on 2026-11-03. The draft already extracts the workflow. To confirm on workspace rows. | |
+| 5 | Is X-13's `_ResourceId` the trigger or the workflow? | `logicapp-callback-listed` | **Answered (workspace):** `_ResourceId` and `Properties_d.entity` are the **trigger** (`.../workflows/logic-huginn-lab/triggers/manual`). The draft's `extract("^(.*/workflows/[^/]+)")` returns the workflow, as intended. | `lab-evidence/X-13.json`, `lab-evidence/P-12.json` (run 2026-11-03T20:44Z) |
 | 6 | Is `Properties_d.requestbody` populated for role assignment and VM writes? | `rbac-self-assignment`, `uai-attached-to-host` | open | |
 | 7 | Are X-08, X-14 and P-13 recorded as expected, and how many rows per call? | `vm-runcommand-by-user`, `aci-exec`, `acr-admin-creds-listed` | open | |
-| 8 | Ingestion delay from action to `AzureActivity` row (sets the alert timeout in `validate_alert.py`) | CI loop | open | |
+| 8 | Ingestion delay from action to `AzureActivity` row (sets the alert timeout in `validate_alert.py`) | CI loop | **Measured:** 3 min 0 s to 4 min 24 s from `TimeGenerated` to `ingestion_time()` for the six evidence rows (one run, 2026-11-03). Expected time-to-alert with a 5-minute rule: up to about 15 minutes. Re-measure in Phase 5. | `lab-evidence/X-13.json`, `lab-evidence/P-12.json` (run 2026-11-03T20:44Z) |
 | 9 | Does `_GetWatchlist('HuginnTrustedAutomation')` keep the custom columns, and does the function still compile if the watchlist is empty? | `HuginnActivity` | partial: custom columns are kept and the function compiles with the watchlist populated (2026-11-03). The empty case is untested; Terraform always adds the deploy principal rows, so it does not arise. | |
-| 10 | Does `listCallbackUrl` from the azurerm provider (Terraform refresh of the lab Logic App) show up as the deployment principal, so the watchlist must cover it? | `logicapp-callback-listed` | yes for the caller running Terraform: each lab apply and refresh as the user produced `listCallbackUrl` and `listKeys` (even with shared keys disabled) on 2026-11-03 (raw API). In CI that caller is the deploy principal, which the watchlist covers. | |
+| 10 | Does `listCallbackUrl` from the azurerm provider (Terraform refresh of the lab Logic App) show up as the deployment principal, so the watchlist must cover it? | `logicapp-callback-listed` | **Answered:** yes. Terraform refresh calls `listCallbackUrl` and `listKeys` (even with shared keys disabled) as whoever runs it. In the workspace, the operator's bootstrap plan/apply at 20:40 and 20:42 UTC produced `listKeys` on the **state** account as the user (Azure CLI app ID), and the `storage-keys-listed` draft flags it (branch C). The deploy principal is watchlisted; the operator is not (use `trusted_operator_object_ids` if wanted). | `lab-evidence/X-13.json`, `lab-evidence/P-12.json` (run 2026-11-03T20:44Z); ad-hoc draft run 2026-11-03 |
 
 ## Deployed (2026-11-03)
 
@@ -70,7 +70,7 @@ Last updated: 2026-11-03 (Phase 2 applied).
 |---|---|
 | Workspace | `law-huginn` in `huginn-sentinel-rg`, workspace ID `b15fe383-5018-4ce4-ada1-6e06f8c83bee` |
 | State | `sthuginntfb8182282bc` / `tfstate` (sentinel.tfstate, lab.tfstate). Bootstrap state is local. |
-| Deploy principal | `huginn-github-deploy`, client `7dc8cd97-cd36-4c93-ba16-c0cc0c2dd6e7`, object `efb16475-4aa5-4d35-a8ff-52239d1c6e02` |
+| Deploy principal | `huginn-github-deploy`, client `7dc8cd97-cd36-4c93-ba16-c0cc0c2dd6e7`, object `efb16475-4aa5-4d35-a8ff-52239d1c6e02`. Federated subject: main branch only. |
 | Lab attacker | `huginn-lab-attacker`, client `a9d1d6db-367e-4648-a22c-3b29cfc23a7b`, object `380b1f3c-3bf0-44de-b940-e035eb1a0084` |
 | Lab | `logic-huginn-lab` (trigger `manual`), `sthuginnlab30e2449d`, `id-huginn-lab` |
 | Function | `HuginnActivity(...)` compiles and runs against the workspace (0 rows, before Activity log data arrived) |
@@ -97,9 +97,13 @@ Last updated: 2026-11-03 (Phase 2 applied).
 | 2026-11-03 | `mi-control-plane-new-ip`, `graph-directory-recon` | Added a constant `Severity` column. | The drafts had none, and every rule maps alert severity from that column. |
 | 2026-11-03 | Plan: lab attacker principal | Moved from `infra/lab` to `infra/bootstrap`. | Creating apps and role assignments needs Graph and User Access Administrator rights. Keeping them in the person-run bootstrap means CI never holds those rights (ADR 0003). |
 | 2026-11-03 | Plan: lab attacker federated credential | Subject is the GitHub environment `lab-replay`, not the main branch. | Only replay jobs can obtain the attacker token. |
+| 2026-11-03 | OIDC federated credential subjects | Rebuilt from GitHub's ID-based format `repo:MarwenOnGit@183097322/Huggin@1444286931:...` (variables `github_owner_id`, `github_repository_id`). Removed the deploy identity's `pull_request` credential. | The first evidence run failed with `AADSTS700213`: the repository uses immutable subjects (`use_immutable_subject: true`), so the name-only subjects never matched. ADR 0003. |
+| 2026-11-03 | `storage-keys-listed` branch B | Marked `manual`, not `ci`. | A replay with one fresh account per run does not exercise "3+ accounts in 1 hour". |
+| 2026-11-03 | `replay.yml` | Checks drift (`terraform plan` must show no changes) instead of applying. | Keeps every Azure change manual and reviewed. ADR 0005. |
+| 2026-11-03 | checkov CKV_AZURE_249 | Skipped inline as a false positive on both federated credentials. | checkov's repo pattern does not accept GitHub's `owner@id/repo@id` subjects. ADR 0004. |
 | 2026-11-03 | Plan: X-13 baseline trap | A new trigger name does not help: the rules key on the workflow, not the trigger. CI replays will create a fresh Logic App per run. | `logicapp-callback-listed` extracts the workflow ID. |
 
-## Incident: AzureActivity export gap (open, 2026-11-03)
+## Incident: AzureActivity export gap (resolved for new events, 2026-11-03)
 
 The subscription diagnostic setting `huginn-activity-to-law` exists with Administrative, Security,
 Policy and Alert enabled. The raw Activity log shows about 40 Huginn events between 15:30 and
@@ -109,13 +113,28 @@ is empty. There were no subscription events after 15:42, so whether the export w
 unknown. Suspects, not yet tested: a slow start of a new subscription diagnostic setting, or
 `local_authentication_enabled = false` on the workspace (no documentation found either way).
 
+**Update 20:50 UTC.** The evidence run at 20:44 UTC reached the workspace in 3 to 4.5 minutes,
+with no configuration change (`local_authentication_enabled` was left at `false`). So the export
+works with local auth disabled, and that suspect is ruled out. The 15:31 to 15:42 UTC events were
+never exported; the most likely cause is the start-up of the new diagnostic setting, but this is
+not confirmed. Lesson for Phase 5: do not trust the first minutes after creating a diagnostic
+setting, and always check the workspace, not only the raw Activity log.
+
+## Draft rules run ad hoc on real rows (2026-11-03, read-only, not deployed)
+
+| Rule | Result | Note |
+|---|---|---|
+| `logicapp-callback-listed` | 1 result: the lab attacker, `logic-huginn-lab`, Medium | Counts the failed attempt on a missing trigger too (same workflow). Acceptable: an attempt is still a signal. |
+| `storage-keys-listed` | 2 results, both branch C: the lab attacker on `sthuginnlab30e2449d` (expected), and the operator on the state account (Terraform refresh) | The second is a real false positive from the operator running Terraform locally. |
+
+This is not validation: the rules are not deployed, and no alert or incident was produced.
+
 ## Open design questions (to settle in Phase 3 or 4)
 
-- **Rule deployment is gated** by `deploy_rules` (default false). Rules are created only after
-  Activity log data has reached the workspace and Phase 3 has fixed the drafts.
-- **Duplicate alerts.** Most drafts look at the last 1 hour but run every 5 minutes, so one event
-  would raise up to 12 alerts. Options: filter recent events on `ingestion_time()` against the
-  rule frequency, or use alert grouping. Rule-level suppression is not an option, because it would
-  hide the second replay in the baseline-trap test.
+- **Rule deployment** is now per rule: `enabled_rules` in `infra/sentinel/huginn.auto.tfvars.json` (replaces `deploy_rules`).
+- **Duplicate alerts: settled (2026-11-03)** for the three demo rules: `ingestion_time() > ago(Frequency)`
+  selects new rows; baselines use earlier rows (docs/TESTING.md, ADR 0005). Checked ad hoc: the
+  same rows fire with a wide window and give 0 rows with the real 5-minute window. The other
+  drafts still use the old pattern and get the same change when they are worked on.
 - **Baseline windows and the query period.** Rules with a 14-day baseline need `lookback: P14D`;
   a 1-hour query period would leave the baseline empty and every pair would look new.

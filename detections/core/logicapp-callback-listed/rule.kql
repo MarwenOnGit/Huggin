@@ -1,20 +1,24 @@
 // Draft, not yet validated.
-let Lookback = 1h;
-let Baseline = 14d;
+// Phase 4 version (2026-11-03). Changes from RULE-PROPOSALS.md: see README.md.
+// A caller lists a Logic App trigger callback URL for a workflow it has not touched in 14 days.
+let Frequency = 5m;   // must equal rule.yaml frequency: rows ingested in the last run are "new"
+let Baseline = 14d;   // must equal rule.yaml lookback
 let Op = "MICROSOFT.LOGIC/WORKFLOWS/TRIGGERS/LISTCALLBACKURL/ACTION";
-let Known = AzureActivity
-    | where TimeGenerated between (ago(Baseline) .. ago(Lookback))
-    | where OperationNameValue =~ Op
-    | extend CallerOid = tolower(tostring(Claims_d["http://schemas.microsoft.com/identity/claims/objectidentifier"])),
-             Workflow  = extract(@"^(.*/workflows/[^/]+)", 1, tolower(_ResourceId))
+let Activity = HuginnActivity(pack_array(Op), Baseline)
+    // _ResourceId is the trigger (lab evidence X-13); key on the workflow.
+    | extend Workflow = extract(@"^(.*/workflows/[^/]+)", 1, Rid);
+let Known = Activity
+    | where IngestedAt <= ago(Frequency)
     | distinct CallerOid, Workflow;
-HuginnActivity(dynamic(["MICROSOFT.LOGIC/WORKFLOWS/TRIGGERS/LISTCALLBACKURL/ACTION"]), Lookback)
+Activity
+| where IngestedAt > ago(Frequency)
 | where not(IsTrusted)
-| extend Workflow = extract(@"^(.*/workflows/[^/]+)", 1, Rid)   // verify in lab: trigger or workflow ID
 | join kind=leftanti Known on CallerOid, Workflow
 | summarize FirstSeen = min(TimeGenerated), LastSeen = max(TimeGenerated),
             WorkflowCount = dcount(Workflow), Workflows = make_set(Workflow, 50),
+            Statuses = make_set(ActivityStatusValue, 5),
             Ips = make_set(CallerIpAddress, 10),
             InDeployment = max(toint(InDeployment))
     by Caller, CallerOid, CallerKind, AppId, SubscriptionId
-| extend Severity = case(InDeployment == 1, "Low", WorkflowCount >= 2, "High", "Medium")
+| extend Severity = case(InDeployment == 1, "Low", WorkflowCount >= 2, "High", "Medium"),
+         TargetResource = tostring(Workflows[0])

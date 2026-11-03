@@ -18,7 +18,8 @@ let Events = AzureActivity
     | extend CallerOid = tolower(tostring(Claims_d["http://schemas.microsoft.com/identity/claims/objectidentifier"])),
              AppId     = tolower(tostring(Claims_d.appid)),
              MiResId   = tolower(tostring(Claims_d.xms_mirid)),   // verify in lab: present for managed identities
-             Rid       = tolower(_ResourceId);
+             Rid       = tolower(_ResourceId),
+             IngestedAt = ingestion_time();   // rules use it to process each row exactly once
 let TrustedHits = Events
     | join kind=inner Trusted on $left.CallerOid == $right.PrincipalId, $left.Op == $right.Operation
     | where Rid startswith ScopePrefix

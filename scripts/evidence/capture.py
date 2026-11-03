@@ -39,6 +39,9 @@ SECRET_PATTERNS = [
     (re.compile(r"\b[A-Za-z0-9+/]{86}==(?![A-Za-z0-9+/=])"), "REDACTED_STORAGE_KEY"),
     (re.compile(r"\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]*"), "REDACTED_JWT"),
 ]
+# Opaque, Entra-internal token claims. Not credentials, but no rule uses them and there is no
+# reason to publish token internals.
+OPAQUE_CLAIMS = {"aio", "xms_rd", "rh", "uti", "xms_ftd"}
 SECRET_KEYS = {"responsebody", "password", "passwords", "keys", "callbackurl", "accesstoken", "refreshtoken"}
 
 
@@ -66,7 +69,9 @@ def redact(obj, hits: list[str], path: str = ""):
         out = {}
         for k, v in obj.items():
             p = f"{path}.{k}" if path else k
-            if k.lower() in SECRET_KEYS and v not in (None, "", "{}", "[]"):
+            if k.lower() in OPAQUE_CLAIMS:
+                out[k] = "OMITTED_OPAQUE_CLAIM"
+            elif k.lower() in SECRET_KEYS and v not in (None, "", "{}", "[]"):
                 hits.append(p)
                 out[k] = "REDACTED"
             else:

@@ -17,9 +17,31 @@ variable "location" {
 }
 
 variable "github_repository" {
-  description = "GitHub owner/name used in the OIDC federated credential subjects."
+  description = "GitHub owner/name. Combined with the numeric IDs below to build the OIDC subjects."
   type        = string
   default     = "MarwenOnGit/Huggin"
+}
+
+variable "github_owner_id" {
+  description = "Numeric GitHub ID of the repository owner (gh api repos/MarwenOnGit/Huggin --jq .owner.id)."
+  type        = string
+  default     = "183097322"
+
+  validation {
+    condition     = can(regex("^[0-9]+$", var.github_owner_id))
+    error_message = "github_owner_id must be numeric."
+  }
+}
+
+variable "github_repository_id" {
+  description = "Numeric GitHub ID of the repository (gh api repos/MarwenOnGit/Huggin --jq .id)."
+  type        = string
+  default     = "1444286931"
+
+  validation {
+    condition     = can(regex("^[0-9]+$", var.github_repository_id))
+    error_message = "github_repository_id must be numeric."
+  }
 }
 
 variable "replay_environment" {

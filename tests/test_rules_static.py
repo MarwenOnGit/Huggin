@@ -27,7 +27,14 @@ REQUIRED_KEYS = {
     "id", "name", "tier", "fenrir_ops", "status", "validation", "deployable", "requires_licence",
     "severity", "severity_column", "frequency", "lookback", "trigger_threshold", "mitre",
 }
-OPTIONAL_KEYS = {"branches"}
+OPTIONAL_KEYS = {"branches", "entities", "alert_name_format"}
+# Entity identifiers accepted by Sentinel for the entity types Huginn uses.
+ENTITY_IDENTIFIERS = {
+    "Account": {"Name", "FullName", "NTDomain", "DnsDomain", "UPNSuffix", "Sid", "AadTenantId",
+                "AadUserId", "PUID", "IsDomainJoined", "DisplayName", "ObjectGuid"},
+    "AzureResource": {"ResourceId"},
+    "IP": {"Address"},
+}
 WATCHLIST_COLUMNS = ["PrincipalId", "AppId", "ScopePrefix", "Operation", "Owner", "Reason", "ExpiresOn"]
 # Client app IDs that must never be excluded on their own (LEGIT-BASELINE.md, principle 1).
 CLIENT_APP_IDS = {
@@ -117,6 +124,18 @@ def test_schema(rule_dir: Path):
     assert techniques and all(re.fullmatch(r"T\d{4}(\.\d{3})?", t) for t in techniques)
     for branch, mode in (r.get("branches") or {}).items():
         assert mode in ("ci", "manual"), f"branch {branch}: {mode}"
+    kql = (rule_dir / "rule.kql").read_text()
+    for e in r.get("entities") or []:
+        assert e["type"] in ENTITY_IDENTIFIERS, f"entity type {e['type']}"
+        for ident, column in e["fields"].items():
+            assert ident in ENTITY_IDENTIFIERS[e["type"]], f"{e['type']}.{ident}"
+            assert re.search(rf"\b{column}\b", kql), f"entity column {column} not in query"
+    fmt = r.get("alert_name_format")
+    if fmt:
+        params = re.findall(r"\{\{(\w+)\}\}", fmt)
+        assert len(params) <= 3, "Sentinel allows at most 3 dynamic parameters"
+        for col in params:
+            assert re.search(rf"\b{col}\b", kql), f"alert name column {col} not in query"
 
 
 @pytest.mark.parametrize("rule_dir", RULES, ids=IDS)
@@ -157,6 +176,10 @@ def test_kql_hygiene(rule_dir: Path):
                       "MicrosoftGraphActivityLogs"):
             assert not re.search(rf"\b{table}\b", code), f"deployable rule references licence-gated {table}"
     assert "\u2014" not in kql, "no em dashes"
+    m = re.search(r"^let Frequency = (\d+)m;", kql, flags=re.M)
+    if m:
+        assert iso_duration_seconds(r["frequency"]) == int(m.group(1)) * 60, \
+            "KQL Frequency must equal rule.yaml frequency (ingestion_time() dedup)"
 
 
 def test_watchlist_columns_and_no_client_app_rows():

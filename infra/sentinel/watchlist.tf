@@ -3,7 +3,11 @@
 #   1. watchlists/HuginnTrustedAutomation.csv (reviewed by hand, committed);
 #   2. generated here for Huginn's own deployment principal, whose Terraform refreshes read
 #      secrets (storage keys, Logic App callback URL, publishing and ACR credentials) on Huginn's
-#      resource groups only. The lab attacker is never added.
+#      resource groups only;
+#   3. generated here for named operators (var.trusted_operators) who run Terraform locally:
+#      only listKeys and listCallbackUrl (the two refresh reads seen in lab evidence), only on
+#      Huginn's resource groups, each with its own expiry and reason.
+# The lab attacker is never added.
 
 locals {
   csv_rows = csvdecode(file("${path.module}/../../watchlists/HuginnTrustedAutomation.csv"))
@@ -21,22 +25,40 @@ locals {
     lower("${local.subscription}/resourceGroups/${rg}")
   ]
 
+  # Narrower than the deploy principal: the two refresh reads observed in lab evidence.
+  operator_ops = [
+    "MICROSOFT.STORAGE/STORAGEACCOUNTS/LISTKEYS/ACTION",
+    "MICROSOFT.LOGIC/WORKFLOWS/TRIGGERS/LISTCALLBACKURL/ACTION",
+  ]
+
   generated_principals = concat(
-    [{ id = local.shared.deploy_principal_object_id, owner = "huginn", reason = "Huginn GitHub deployment principal: Terraform refresh" }],
-    [for id in var.trusted_operator_object_ids : { id = id, owner = "huginn", reason = "Operator running Terraform locally on Huginn resource groups" }],
+    [{
+      id         = local.shared.deploy_principal_object_id
+      owner      = "huginn"
+      reason     = "Huginn GitHub deployment principal: Terraform refresh"
+      expires_on = var.trusted_expires_on
+      ops        = local.terraform_refresh_ops
+    }],
+    [for o in var.trusted_operators : {
+      id         = o.object_id
+      owner      = o.owner
+      reason     = o.reason
+      expires_on = o.expires_on
+      ops        = local.operator_ops
+    }],
   )
 
   generated_rows = flatten([
     for p in local.generated_principals : [
       for scope in local.huginn_scopes : [
-        for op in local.terraform_refresh_ops : {
+        for op in p.ops : {
           PrincipalId = lower(p.id)
           AppId       = ""
           ScopePrefix = scope
           Operation   = op
           Owner       = p.owner
           Reason      = p.reason
-          ExpiresOn   = var.trusted_expires_on
+          ExpiresOn   = p.expires_on
         }
       ]
     ]

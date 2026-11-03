@@ -22,22 +22,32 @@ variable "enable_entra_logs" {
   default     = false
 }
 
-variable "deploy_rules" {
-  description = "Create the analytics rules. Off until Activity log data has reached the workspace and Phase 3 has fixed the drafts (a rule whose query does not compile fails to deploy)."
-  type        = bool
-  default     = false
+variable "enabled_rules" {
+  description = "Rule IDs to deploy as scheduled analytics rules. A rule is deployed only if it is listed here AND deployable in its rule.yaml. Set in huginn.auto.tfvars.json."
+  type        = list(string)
+  default     = []
 }
 
 variable "disabled_rules" {
-  description = "Rule IDs to skip even if deployable (for example to break one on purpose in a demo)."
+  description = "Rule IDs to skip even if enabled (for example to break one on purpose in a demo)."
   type        = list(string)
   default     = []
 }
 
-variable "trusted_operator_object_ids" {
-  description = "Extra people (object IDs) whose Terraform refreshes on Huginn resource groups should not alert, for example you when running terraform locally. Empty by default."
-  type        = list(string)
-  default     = []
+variable "trusted_operators" {
+  description = "People who run Terraform locally on Huginn resource groups. Each gets watchlist rows for listKeys and listCallbackUrl only, on Huginn resource groups only."
+  type = list(object({
+    object_id  = string
+    owner      = string
+    reason     = string
+    expires_on = string
+  }))
+  default = []
+
+  validation {
+    condition     = alltrue([for o in var.trusted_operators : can(regex("^[0-9a-f-]{36}$", o.object_id)) && can(regex("^\\d{4}-\\d{2}-\\d{2}$", o.expires_on))])
+    error_message = "object_id must be a lower-case GUID and expires_on a YYYY-MM-DD date."
+  }
 }
 
 variable "trusted_expires_on" {

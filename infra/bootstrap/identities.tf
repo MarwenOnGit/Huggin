@@ -21,21 +21,13 @@ resource "azuread_service_principal" "deploy" {
 }
 
 resource "azuread_application_federated_identity_credential" "deploy_main" {
+  #checkov:skip=CKV_AZURE_249:False positive: checkov expects repo:owner/repo, but GitHub ID-based subjects are repo:owner@id/repo@id; the subject pins one immutable repo and one branch or environment, no wildcard (ADR 0003, 0004)
   application_id = azuread_application.deploy.id
   display_name   = "github-main"
   description    = "Workflows on the main branch of ${var.github_repository}."
   issuer         = local.oidc_issuer
   audiences      = local.oidc_audience
-  subject        = "repo:${var.github_repository}:ref:refs/heads/main"
-}
-
-resource "azuread_application_federated_identity_credential" "deploy_pr" {
-  application_id = azuread_application.deploy.id
-  display_name   = "github-pull-request"
-  description    = "Pull request workflows in ${var.github_repository} (fork PRs get no OIDC token)."
-  issuer         = local.oidc_issuer
-  audiences      = local.oidc_audience
-  subject        = "repo:${var.github_repository}:pull_request"
+  subject        = "${local.github_subject_prefix}:ref:refs/heads/main"
 }
 
 resource "azurerm_role_assignment" "deploy_sentinel_rg" {
@@ -82,12 +74,13 @@ resource "azuread_service_principal" "attacker" {
 }
 
 resource "azuread_application_federated_identity_credential" "attacker_replay" {
+  #checkov:skip=CKV_AZURE_249:False positive: checkov expects repo:owner/repo, but GitHub ID-based subjects are repo:owner@id/repo@id; the subject pins one immutable repo and one branch or environment, no wildcard (ADR 0003, 0004)
   application_id = azuread_application.attacker.id
   display_name   = "github-env-${var.replay_environment}"
   description    = "Only jobs that run in the ${var.replay_environment} environment of ${var.github_repository}."
   issuer         = local.oidc_issuer
   audiences      = local.oidc_audience
-  subject        = "repo:${var.github_repository}:environment:${var.replay_environment}"
+  subject        = "${local.github_subject_prefix}:environment:${var.replay_environment}"
 }
 
 resource "azurerm_role_assignment" "attacker_lab_rg" {

@@ -1,7 +1,11 @@
 // Draft, not yet validated.
-// Core variant: AzureActivity only. The SigninLogs device code boost from
-// RULE-PROPOSALS.md is removed (no P1/P2 on this tenant); see README.md.
-let Window = 4h;
+// Phase 4 version (2026-11-03). Changes from RULE-PROPOSALS.md: see README.md.
+// Core variant: AzureActivity only. The SigninLogs device code boost from RULE-PROPOSALS.md is
+// removed (no P1/P2 on this tenant); see README.md.
+// One non-managed caller performs 2+ kinds of "execute on a host or extract a secret" actions,
+// or touches 3+ targets, within 4 hours; or a managed identity then acts from that caller's IP.
+let Frequency = 5m;   // must equal rule.yaml frequency: fire only when a new row arrived
+let Window = 4h;      // must equal rule.yaml lookback
 let StageMap = datatable(Op:string, Stage:string) [
     "MICROSOFT.COMPUTE/VIRTUALMACHINES/RUNCOMMAND/ACTION",                  "HostExecution",
     "MICROSOFT.COMPUTE/VIRTUALMACHINES/RUNCOMMANDS/WRITE",                  "HostExecution",
@@ -16,22 +20,31 @@ let UserSide = HuginnActivity(toscalar(StageMap | summarize make_list(Op)), Wind
     | where CallerKind != "ManagedIdentity" and not(IsTrusted)
     | lookup kind=inner StageMap on Op
     | summarize Stages = make_set(Stage), StageCount = dcount(Stage),
-                Targets = dcount(Rid),
+                Targets = dcount(Rid), TargetList = make_set(Rid, 20),
                 FirstStage = min(TimeGenerated), LastStage = max(TimeGenerated),
+                NewRows = countif(IngestedAt > ago(Frequency)),
                 UserIps = make_set(CallerIpAddress, 20)
-        by Caller, CallerOid;
+        by Caller, CallerOid, CallerKind, AppId;
 let MiSide = AzureActivity
     | where TimeGenerated > ago(Window)
-    | extend MiResId = tolower(tostring(Claims_d.xms_mirid))
+    | extend MiResId = tolower(tostring(Claims_d.xms_mirid)), MiIngested = ingestion_time()
     | where isnotempty(MiResId)
-    | project MiTime = TimeGenerated, MiResId, MiOp = OperationNameValue, MiIp = CallerIpAddress;
+    | project MiTime = TimeGenerated, MiResId, MiOp = OperationNameValue, MiIp = CallerIpAddress, MiIngested;
 let Pivot = UserSide
     | mv-expand UserIp = UserIps to typeof(string)
     | join kind=inner MiSide on $left.UserIp == $right.MiIp
     | where MiTime between (FirstStage .. (LastStage + 2h))
-    | summarize MiIdentities = make_set(MiResId, 10), MiOps = make_set(MiOp, 10) by CallerOid;
+    | summarize MiIdentities = make_set(MiResId, 10), MiOps = make_set(MiOp, 10),
+                MiNewRows = countif(MiIngested > ago(Frequency))
+        by CallerOid;
 UserSide
 | join kind=leftouter Pivot on CallerOid
-| extend MiPivot = coalesce(array_length(MiIdentities), 0) > 0
+| extend MiPivot = coalesce(array_length(MiIdentities), 0) > 0,
+         MiNewRows = coalesce(MiNewRows, 0)
 | where StageCount >= 2 or Targets >= 3 or MiPivot
-| extend Severity = iff(MiPivot, "High", "Medium")
+// Fire only when this run brought a new row for the chain, so one chain is not re-alerted
+// every 5 minutes for 4 hours.
+| where NewRows > 0 or MiNewRows > 0
+| project-away CallerOid1
+| extend Severity = iff(MiPivot, "High", "Medium"),
+         TargetResource = tostring(TargetList[0])
