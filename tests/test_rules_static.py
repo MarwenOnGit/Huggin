@@ -118,6 +118,9 @@ def test_schema(rule_dir: Path):
     assert 5 * 60 <= freq <= 14 * 86400
     assert look <= 14 * 86400, "Sentinel scheduled rules look back at most 14 days"
     assert freq <= look, "frequency must not exceed lookback"
+    # Enforced by the Sentinel API (400 on apply, 2026-11-03), not by the azurerm provider.
+    if look >= 2 * 86400:
+        assert freq >= 3600, "Sentinel: lookback of 2 days or more needs frequency of 1 hour or more"
     tactics = r["mitre"]["tactics"]
     techniques = r["mitre"]["techniques"]
     assert tactics and set(tactics) <= TACTICS, f"bad tactics {tactics}"
@@ -176,6 +179,10 @@ def test_kql_hygiene(rule_dir: Path):
                       "MicrosoftGraphActivityLogs"):
             assert not re.search(rf"\b{table}\b", code), f"deployable rule references licence-gated {table}"
     assert "\u2014" not in kql, "no em dashes"
+    b = re.search(r"^let (?:Baseline|Window) = (\d+)([hd]);\s*//\s*must equal rule.yaml lookback", kql, flags=re.M)
+    if b:
+        secs = int(b.group(1)) * (3600 if b.group(2) == "h" else 86400)
+        assert secs == iso_duration_seconds(r["lookback"]), "KQL baseline window must equal rule.yaml lookback"
     m = re.search(r"^let Frequency = (\d+)m;", kql, flags=re.M)
     if m:
         assert iso_duration_seconds(r["frequency"]) == int(m.group(1)) * 60, \

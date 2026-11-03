@@ -1,8 +1,8 @@
 // Draft, not yet validated.
 // Phase 4 version (2026-11-03). Changes from RULE-PROPOSALS.md: see README.md.
-// A caller lists a Logic App trigger callback URL for a workflow it has not touched in 14 days.
+// A caller lists a Logic App trigger callback URL for a workflow it has not touched in 47 hours.
 let Frequency = 5m;   // must equal rule.yaml frequency: rows ingested in the last run are "new"
-let Baseline = 14d;   // must equal rule.yaml lookback
+let Baseline = 47h;   // must equal rule.yaml lookback (Sentinel: period >= 2d needs frequency >= 1h)
 let Op = "MICROSOFT.LOGIC/WORKFLOWS/TRIGGERS/LISTCALLBACKURL/ACTION";
 let Activity = HuginnActivity(pack_array(Op), Baseline)
     // _ResourceId is the trigger (lab evidence X-13); key on the workflow.

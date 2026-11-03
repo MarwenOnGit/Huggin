@@ -3,7 +3,7 @@
 This file is the single source of truth for what works. A rule is "validated" only after a lab
 run produced the expected alert, with a date and evidence. Everything else is a draft.
 
-Last updated: 2026-11-03 (Phase 2 applied).
+Last updated: 2026-11-03 (Phase 4, partial apply).
 
 ## Environment
 
@@ -26,7 +26,7 @@ Last updated: 2026-11-03 (Phase 2 applied).
 | 1. Repo layout | done (local only) | 2026-11-03 |
 | 2. Infrastructure | **Applied**: bootstrap (20), sentinel (18, no rules: `deploy_rules = false`), lab always-on (5). Second plan of sentinel and lab: no changes. | 2026-11-03 |
 | 3. Lab evidence | X-13 and P-12 captured as the lab attacker (`lab-evidence/`). Items 1, 3, 5, 8, 10 answered; 2 answered except managed identity. OIDC subject fix applied. Export gap resolved for new events. Still to do: X-08, X-10, X-14, P-13 (opt-in resources), item 4, item 6, item 7. | 2026-11-03 |
-| 4. Detections | Demo set (`logicapp-callback-listed`, `storage-keys-listed`, `fenrir-chain` multi-stage) rewritten with ingestion-time dedup, tested ad hoc on real rows (fire with a wide window, silent with the real 5-minute window). Sentinel plan ready (3 rules, function replaced, 6 operator watchlist rows), **not applied**. Opt-in batch (X-08, X-10, X-14, P-13) postponed until after 11 November. | 2026-11-03 |
+| 4. Detections | Demo set (`logicapp-callback-listed`, `storage-keys-listed`, `fenrir-chain` multi-stage) rewritten with ingestion-time dedup, tested ad hoc on real rows (fire with a wide window, silent with the real 5-minute window). Sentinel apply 2026-11-03 **partly failed**: function replaced, 6 operator watchlist rows created, `fenrir-chain` created and enabled (PT5M/PT4H). `logicapp-callback-listed` and `storage-keys-listed` rejected (PT5M with P14D not allowed). **Decision (option A):** PT5M with PT47H and `Baseline = 47h`; re-tested ad hoc on real rows (fire with a wide window, silent at 5 minutes; storage rule no longer flags the operator, so the operator watchlist rows work). Plan for the 2 rules pending approval. Opt-in batch (X-08, X-10, X-14, P-13) postponed until after 11 November. | 2026-11-03 |
 | 5. Testing | static tests extended; `replay.yml` (drift check, replays on fresh resources, cleanup, alert validation) and `tests/validate_alert.py` written, **not run yet**. Baseline-trap test (two runs in a row) not done. | 2026-11-03 |
 | 6. Documentation | not started | |
 
@@ -85,7 +85,7 @@ Last updated: 2026-11-03 (Phase 2 applied).
 | Severity override | `alert_details_override { severity_column_name = "Severity" }` exists in azurerm 5.12.0 |
 | Incident settings | Block is `incident { create_incident_enabled, grouping {} }` |
 | Techniques | Not validated by the provider. The Sentinel API takes parent techniques, so Terraform sends `T1550` for `T1550.001`. |
-| Frequency and period | Provider and Microsoft Learn: both 5 minutes to 14 days, frequency at most the period. No other coupling, so `PT5M` with `P14D` is allowed. |
+| Frequency and period | Provider and Microsoft Learn: both 5 minutes to 14 days, frequency at most the period. **Wrong conclusion corrected 2026-11-03:** the Sentinel API also enforces "when queryPeriod >= 2 days, queryFrequency must be >= 1 hour" (400 BadRequest on apply). The docs page read did not mention it, and I recorded "no other coupling" without testing it. |
 | Ingestion delay | Sentinel runs scheduled rules 5 minutes after their scheduled time. Microsoft's documented fix for duplicates is an `ingestion_time()` filter. |
 | Saved function | `azurerm_log_analytics_saved_search` with `function_alias` and `function_parameters = ["Ops:dynamic", "Lookback:timespan"]` |
 
@@ -98,6 +98,9 @@ Last updated: 2026-11-03 (Phase 2 applied).
 | 2026-11-03 | Plan: lab attacker principal | Moved from `infra/lab` to `infra/bootstrap`. | Creating apps and role assignments needs Graph and User Access Administrator rights. Keeping them in the person-run bootstrap means CI never holds those rights (ADR 0003). |
 | 2026-11-03 | Plan: lab attacker federated credential | Subject is the GitHub environment `lab-replay`, not the main branch. | Only replay jobs can obtain the attacker token. |
 | 2026-11-03 | OIDC federated credential subjects | Rebuilt from GitHub's ID-based format `repo:MarwenOnGit@183097322/Huggin@1444286931:...` (variables `github_owner_id`, `github_repository_id`). Removed the deploy identity's `pull_request` credential. | The first evidence run failed with `AADSTS700213`: the repository uses immutable subjects (`use_immutable_subject: true`), so the name-only subjects never matched. ADR 0003. |
+| 2026-11-03 | Facts table: frequency and period | Corrected: PT5M with P14D is rejected by the Sentinel API (period >= 2 days needs frequency >= 1 hour). | Found by a failed apply. Earlier entry was a documentation reading, not a test. |
+| 2026-11-03 | `logicapp-callback-listed`, `storage-keys-listed` | Lookback P14D to PT47H, KQL `Baseline = 47h`, frequency stays PT5M. | Sentinel API rule (period >= 2 days needs frequency >= 1 hour). Option A, ADR 0005. Option C on the roadmap. |
+| 2026-11-03 | `acr-admin-creds-listed`, `mi-control-plane-new-ip` | Frequency PT5M / PT15M to PT1H, lookback stays P14D. | Same API rule; caught by the new static test. Not deployed, not time-critical. |
 | 2026-11-03 | `storage-keys-listed` branch B | Marked `manual`, not `ci`. | A replay with one fresh account per run does not exercise "3+ accounts in 1 hour". |
 | 2026-11-03 | `replay.yml` | Checks drift (`terraform plan` must show no changes) instead of applying. | Keeps every Azure change manual and reviewed. ADR 0005. |
 | 2026-11-03 | checkov CKV_AZURE_249 | Skipped inline as a false positive on both federated credentials. | checkov's repo pattern does not accept GitHub's `owner@id/repo@id` subjects. ADR 0004. |

@@ -1,12 +1,12 @@
 // Draft, not yet validated.
 // Phase 4 version (2026-11-03). Changes from RULE-PROPOSALS.md: see README.md.
 // Storage account key retrieval in three suspicious shapes:
-//   A: a managed identity acting from an IP it has never used (14 days);
+//   A: a managed identity acting from an IP it has not used in 47 hours;
 //   B: one caller listing keys on 3 or more accounts in 1 hour;
 //   C: a new (caller, account) pair, outside deployments and trusted automation.
 let Frequency = 5m;   // must equal rule.yaml frequency: rows ingested in the last run are "new"
 let Window = 1h;      // branch B spread window
-let Baseline = 14d;   // must equal rule.yaml lookback
+let Baseline = 47h;   // must equal rule.yaml lookback (Sentinel: period >= 2d needs frequency >= 1h)
 let OidClaim = "http://schemas.microsoft.com/identity/claims/objectidentifier";
 let Op = "MICROSOFT.STORAGE/STORAGEACCOUNTS/LISTKEYS/ACTION";
 let Activity = HuginnActivity(pack_array(Op), Baseline)

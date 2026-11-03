@@ -12,7 +12,7 @@ requires_licence: none
 # severity: default only; the query's Severity column overrides it per alert
 severity: Medium
 severity_column: Severity
-frequency: PT5M
+frequency: PT1H
 # lookback: Sentinel query period, at most P14D; must cover the query's longest baseline
 lookback: P14D
 trigger_threshold: 0

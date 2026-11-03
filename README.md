@@ -56,3 +56,13 @@ make lint     # terraform fmt, validate, tflint, checkov
 ```
 
 Deployment, replay, cost and teardown instructions arrive with Phases 2 and 5.
+
+## Roadmap
+
+- **14-day baselines at 5-minute speed.** Sentinel requires hourly runs for lookbacks of 2 days or
+  more, so the fast "new pair" rules use a 47-hour baseline today. Plan: a daily job writes the
+  last 14 days of (caller, resource) pairs to a `HuginnKnownPairs` watchlist that the fast rules
+  read ([ADR 0005](docs/adr/0005-replays-fresh-resources-and-dedup.md), option C).
+- Defender XDR correlation, Logic Apps response playbooks (for example rotate a storage key after
+  `storage-keys-listed`), data-plane rules on `StorageBlobLogs` and ACR logs (D-01 to D-03),
+  hunting queries for the enumerate phase.

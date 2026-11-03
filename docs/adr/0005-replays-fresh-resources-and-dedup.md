@@ -22,12 +22,28 @@ on a new (caller, resource) pair over 14 days. Scheduled rules run every 5 minut
    it hides every alert of the rule for the suppression period, including the second replay of the
    baseline-trap test. Alert grouping was rejected: it groups alerts into incidents but does not
    stop duplicate alerts.
-4. **CI checks drift instead of applying.** `replay.yml` fails if `terraform plan` shows changes.
+4. **Short baseline for fast rules (added 2026-11-03).** The Sentinel API requires a frequency of
+   at least 1 hour when the query period is 2 days or more. The two "new pair" demo rules run every
+   5 minutes with a 47-hour baseline (`PT47H`) rather than hourly with 14 days. Options considered:
+
+   | Option | Frequency / lookback | Time to alert | Detection cost |
+   |---|---|---|---|
+   | **A (chosen)** | PT5M / PT47H | about 10 to 15 min | Pairs are forgotten after about 2 days, so slow-cadence legitimate callers alert more often |
+   | B | PT1H / P14D | up to about 70 min | None, but CI waits about 90 min and the demo cannot show a live alert |
+   | C (roadmap) | PT5M rule reading a baseline kept elsewhere | about 10 to 15 min | None; more moving parts |
+
+   **Option C (roadmap):** a scheduled job (for example a Logic App, or a GitHub workflow as the
+   deploy identity) runs daily, computes the (caller, resource) pairs of the last 14 days from
+   `AzureActivity`, and writes them to a `HuginnKnownPairs` watchlist (or a summary-rule table).
+   The fast rule then reads 47 hours of raw rows plus the long-term pairs from that store, so it
+   keeps a 14-day memory at 5-minute speed.
+5. **CI checks drift instead of applying.** `replay.yml` fails if `terraform plan` shows changes.
    Applies stay manual and reviewed.
 
 ## Consequences
 
 - Each nightly run creates and deletes one Logic App and one storage account (no cost).
+- The two demo "new pair" rules remember pairs for 47 hours, not 14 days, until option C exists.
 - A skipped scheduled run leaves its ingestion interval unevaluated (documented limit).
 - The identity-pivot branch of `fenrir-chain` and branch A of `storage-keys-listed` need a real
   managed identity acting off-host, so they are validated only in the purple-team run.
