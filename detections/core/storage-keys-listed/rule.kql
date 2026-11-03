@@ -4,7 +4,9 @@
 //   A: a managed identity acting from an IP it has not used in 47 hours;
 //   B: one caller listing keys on 3 or more accounts in 1 hour;
 //   C: a new (caller, account) pair, outside deployments and trusted automation.
-let Frequency = 5m;   // must equal rule.yaml frequency: rows ingested in the last run are "new"
+let Frequency = 5m;   // must equal rule.yaml frequency. "New" = ingested in (now() - Frequency, now()].
+                      // In a scheduled rule now() is the window end, and the query runs about 5 minutes
+                      // later; the upper bound stops rows ingested in that gap from being counted twice.
 let Window = 1h;      // branch B spread window
 let Baseline = 47h;   // must equal rule.yaml lookback (Sentinel: period >= 2d needs frequency >= 1h)
 let OidClaim = "http://schemas.microsoft.com/identity/claims/objectidentifier";
@@ -12,7 +14,7 @@ let Op = "MICROSOFT.STORAGE/STORAGEACCOUNTS/LISTKEYS/ACTION";
 let Activity = HuginnActivity(pack_array(Op), Baseline)
     | extend Account = extract(@"^(.*/storageaccounts/[^/]+)", 1, Rid);
 let New = Activity
-    | where IngestedAt > ago(Frequency);
+    | where IngestedAt > ago(Frequency) and IngestedAt <= now();
 let PairHistory = Activity
     | where IngestedAt <= ago(Frequency)
     | distinct CallerOid, Account;
@@ -29,7 +31,7 @@ let BranchA = New
 let Spread = Activity
     | where TimeGenerated > ago(Window) and not(IsTrusted);
 let BranchB = Spread
-    | summarize Accounts = dcount(Account), NewRows = countif(IngestedAt > ago(Frequency)) by CallerOid
+    | summarize Accounts = dcount(Account), NewRows = countif(IngestedAt > ago(Frequency) and IngestedAt <= now()) by CallerOid
     | where Accounts >= 3 and NewRows > 0
     | project CallerOid
     | join kind=inner Spread on CallerOid

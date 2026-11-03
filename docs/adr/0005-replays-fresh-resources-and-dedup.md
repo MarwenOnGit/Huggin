@@ -17,8 +17,11 @@ on a new (caller, resource) pair over 14 days. Scheduled rules run every 5 minut
    token. Fenrir itself is used only in the manual purple-team run.
 2. **Fresh resource per run.** Replays for "new pair" rules create a uniquely named resource
    and delete it afterwards, so the pair is new every night (the baseline trap, docs/TESTING.md).
-3. **Ingestion-time deduplication.** Rules treat rows as new when `ingestion_time()` falls in the
-   last rule interval, and build baselines from earlier rows. Rule-level suppression was rejected:
+3. **Ingestion-time deduplication.** Rules treat rows as new when `ingestion_time()` falls in
+   `(now() - interval, now()]`, and build baselines from earlier rows. The upper bound matters:
+   in a scheduled rule `now()` is the window end, while the query runs about 5 minutes later
+   (corrected 2026-11-03 after the first deployment alerted 2 to 3 times per event). Aggregating
+   rules count a request (`CorrelationId`) once, when its first row is ingested. Rule-level suppression was rejected:
    it hides every alert of the rule for the suppression period, including the second replay of the
    baseline-trap test. Alert grouping was rejected: it groups alerts into incidents but does not
    stop duplicate alerts.

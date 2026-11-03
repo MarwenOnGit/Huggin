@@ -6,9 +6,8 @@ on:
   workflow_dispatch:
     inputs:
       ops:
-        description: "Comma-separated operations (allowed: X-08, X-13, X-13-fail, P-12)"
+        description: "Comma-separated operations, typed on purpose each run (allowed: X-08, X-13, X-13-fail, P-12)"
         required: true
-        default: "X-13,X-13-fail,P-12"
 
 permissions: {}
 

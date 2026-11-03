@@ -16,6 +16,16 @@ frequency: PT5M
 # lookback: Sentinel query period, at most P14D; must cover the query's longest baseline
 lookback: PT1H
 trigger_threshold: 0
+# alert_name_format: per-alert title; {{Column}} placeholders come from the query output
+alert_name_format: "Huginn: VM Run Command by {{Caller}}"
+entities:
+  - type: Account
+    fields:
+      AadUserId: CallerOid
+      FullName: Caller
+  - type: AzureResource
+    fields:
+      ResourceId: TargetResource
 mitre:
   tactics: [Execution]
   techniques: [T1651]

@@ -47,10 +47,25 @@ Rules run every 5 minutes, but `AzureActivity` rows arrive 3 to 4.5 minutes afte
 (lab evidence, 2026-11-03). A query filtered only on `TimeGenerated` over the last hour would
 either miss late rows (short window) or alert up to 12 times on the same row (long window).
 
-Huginn's rules select "new" rows with `ingestion_time() > ago(Frequency)`, where `Frequency`
-equals the rule frequency, as in Microsoft's guidance on ingestion delay. Consecutive runs cover
-consecutive ingestion intervals, so each row is processed once. Baselines use the rows ingested
-before the current interval. The static test checks that the KQL `Frequency` matches `rule.yaml`.
+Huginn's rules select "new" rows with `ingestion_time() > ago(Frequency) and ingestion_time() <= now()`,
+where `Frequency` equals the rule frequency. Baselines use the rows ingested before the current
+interval. The static test checks that the KQL `Frequency` matches `rule.yaml`.
+
+**Why the upper bound (found 2026-11-03).** Inside a scheduled rule, `now()` is the window end
+(`Query End Time UTC` in the alert), but Sentinel runs the query about 5 minutes later. Without
+`<= now()`, a row ingested in that gap is "new" in two runs. The first deployed version, which
+followed Microsoft's sample (`ingestion_time() > ago(lookback)` only), raised 2 alerts per event for
+rules 1 and 2 and 3 for `fenrir-chain` on the first green replay.
+
+**Per request, not per row.** One request writes several rows (Start, Accept, Success) that can
+be ingested minutes apart (X-08: 2.5 minutes). Rules that aggregate (`vm-runcommand-by-user`,
+`fenrir-chain`) treat a `CorrelationId` as new once, when its first row lands. Rules with a "new
+pair" baseline are already safe: the first row's pair is in the baseline for the next run.
+
+**How it was checked.** A read-only simulation: each rule is run ad hoc with
+`now()` and `ago()` pinned to Sentinel's real window ends and `TimeGenerated` limited to the
+window. The simulation reproduced the deployed rules' real alert times exactly, then showed one
+alert per event for the fixed rules.
 
 Known limit: if a scheduled run is skipped or delayed by more than its interval, rows ingested in
 the gap are never evaluated. Sentinel reports skipped runs in `SentinelHealth`, if health
@@ -70,6 +85,25 @@ the roadmap (ADR 0005, option C).
 
 ## Expected time to alert
 
-Ingestion (3 to 4.5 min) + wait for the next run (up to 5 min) + Sentinel's 5-minute delay +
-alert write: roughly 10 to 15 minutes. The validation timeout is 30 minutes. Measured values go
-into STATUS.md after each run.
+Ingestion + wait for the next window end (up to 5 min) + Sentinel's 5-minute run delay + alert write.
+
+| Rule | Ingestion seen in the lab | Measured time to alert |
+|---|---|---|
+| `fenrir-chain` | 3 to 4.5 min | 5 min 5 s; 7 min 24 s |
+| `logicapp-callback-listed` | 3 to 4.5 min (8 min on 2026-11-03 21:21) | 10 min 24 s |
+| `storage-keys-listed` | 3 to 4.5 min (5.7 min on 2026-11-03 21:22) | 10 min 35 s |
+| `vm-runcommand-by-user` | 7 to 10 min | not yet measured; expect 15 to 20 min |
+
+The validation timeout is 30 minutes.
+
+## Expected run time of `replay.yml`
+
+| Job | Time |
+|---|---|
+| drift (two `terraform plan`) | about 1 to 2 min |
+| replay: Logic App and storage account | under 1 min |
+| replay: X-08 VM (create, Run Command, delete) | about 2 to 3 min (evidence run 2026-11-03: 82 s, but VM creation varies) |
+| validate | until the last alert, up to 30 min |
+| cleanup | under 1 min |
+
+A full run with X-08 should finish in about 20 to 25 minutes.

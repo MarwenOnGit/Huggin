@@ -4,7 +4,9 @@
 // removed (no P1/P2 on this tenant); see README.md.
 // One non-managed caller performs 2+ kinds of "execute on a host or extract a secret" actions,
 // or touches 3+ targets, within 4 hours; or a managed identity then acts from that caller's IP.
-let Frequency = 5m;   // must equal rule.yaml frequency: fire only when a new row arrived
+let Frequency = 5m;   // must equal rule.yaml frequency. "New" = ingested in (now() - Frequency, now()].
+                      // In a scheduled rule now() is the window end, and the query runs about 5 minutes
+                      // later; the upper bound stops rows ingested in that gap from being counted twice.
 let Window = 4h;      // must equal rule.yaml lookback
 let StageMap = datatable(Op:string, Stage:string) [
     "MICROSOFT.COMPUTE/VIRTUALMACHINES/RUNCOMMAND/ACTION",                  "HostExecution",
@@ -16,26 +18,32 @@ let StageMap = datatable(Op:string, Stage:string) [
     "MICROSOFT.STORAGE/STORAGEACCOUNTS/LISTKEYS/ACTION",                    "SecretListing",
     "MICROSOFT.CONTAINERREGISTRY/REGISTRIES/LISTCREDENTIALS/ACTION",        "SecretListing"
 ];
-let UserSide = HuginnActivity(toscalar(StageMap | summarize make_list(Op)), Window)
+let StageRows = HuginnActivity(toscalar(StageMap | summarize make_list(Op)), Window)
     | where CallerKind != "ManagedIdentity" and not(IsTrusted)
-    | lookup kind=inner StageMap on Op
+    | where IngestedAt <= now()   // the chain as known at the window end; later rows count next run
+    | lookup kind=inner StageMap on Op;
+// A request (CorrelationId) is new once, when its first row is ingested (rows of one request can
+// be ingested minutes apart, lab evidence X-08).
+let FirstIngest = StageRows | summarize FirstIngested = min(IngestedAt) by CorrelationId;
+let UserSide = StageRows
+    | lookup FirstIngest on CorrelationId
     | summarize Stages = make_set(Stage), StageCount = dcount(Stage),
                 Targets = dcount(Rid), TargetList = make_set(Rid, 20),
                 FirstStage = min(TimeGenerated), LastStage = max(TimeGenerated),
-                NewRows = countif(IngestedAt > ago(Frequency)),
+                NewRows = dcountif(CorrelationId, FirstIngested > ago(Frequency)),
                 UserIps = make_set(CallerIpAddress, 20)
         by Caller, CallerOid, CallerKind, AppId;
 let MiSide = AzureActivity
     | where TimeGenerated > ago(Window)
     | extend MiResId = tolower(tostring(Claims_d.xms_mirid)), MiIngested = ingestion_time()
-    | where isnotempty(MiResId)
+    | where isnotempty(MiResId) and MiIngested <= now()
     | project MiTime = TimeGenerated, MiResId, MiOp = OperationNameValue, MiIp = CallerIpAddress, MiIngested;
 let Pivot = UserSide
     | mv-expand UserIp = UserIps to typeof(string)
     | join kind=inner MiSide on $left.UserIp == $right.MiIp
     | where MiTime between (FirstStage .. (LastStage + 2h))
     | summarize MiIdentities = make_set(MiResId, 10), MiOps = make_set(MiOp, 10),
-                MiNewRows = countif(MiIngested > ago(Frequency))
+                MiNewRows = countif(MiIngested > ago(Frequency) and MiIngested <= now())
         by CallerOid;
 UserSide
 | join kind=leftouter Pivot on CallerOid

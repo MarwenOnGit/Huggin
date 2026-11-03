@@ -1,18 +1,37 @@
 // Draft, not yet validated.
-HuginnActivity(dynamic([
+// Phase 4 version (2026-11-03). Changes from RULE-PROPOSALS.md: see README.md.
+// A caller runs commands inside VMs through the control plane (action Run Command, managed
+// Run Command resource, scale set instances, Arc machines). Lab evidence X-08: one call is three
+// rows (Start, Accept, Success) with one CorrelationId; the command text is not logged.
+let Frequency = 5m;   // must equal rule.yaml frequency. "New" = ingested in (now() - Frequency, now()].
+                      // In a scheduled rule now() is the window end, and the query runs about 5 minutes
+                      // later; the upper bound stops rows ingested in that gap from being counted twice.
+let Window = 1h;      // must equal rule.yaml lookback
+let Rows = HuginnActivity(dynamic([
     "MICROSOFT.COMPUTE/VIRTUALMACHINES/RUNCOMMAND/ACTION",
     "MICROSOFT.COMPUTE/VIRTUALMACHINES/RUNCOMMANDS/WRITE",
     "MICROSOFT.COMPUTE/VIRTUALMACHINESCALESETS/VIRTUALMACHINES/RUNCOMMAND/ACTION",
-    "MICROSOFT.HYBRIDCOMPUTE/MACHINES/RUNCOMMANDS/WRITE"]), 1h)
-| where not(IsTrusted)
-| extend Vm = extract(@"^(.*/(virtualmachines|machines)/[^/]+)", 1, Rid)
+    "MICROSOFT.HYBRIDCOMPUTE/MACHINES/RUNCOMMANDS/WRITE"]), Window)
+    | where not(IsTrusted)
+    | where IngestedAt <= now()   // the activity as known at the window end; later rows count next run
+    | extend Vm = extract(@"^(.*/(virtualmachines|machines)/[^/]+)", 1, Rid);
+// One request (CorrelationId) is several rows that may be ingested minutes apart (X-08 evidence:
+// Success 21:58:02, Start and Accept 22:00:26). A request is "new" once, when its first row lands.
+let FirstIngest = Rows | summarize FirstIngested = min(IngestedAt) by CorrelationId;
+Rows
+| lookup FirstIngest on CorrelationId
 | summarize FirstSeen = min(TimeGenerated), LastSeen = max(TimeGenerated),
             Requests  = dcount(CorrelationId),
             VmCount   = dcount(Vm), Vms = make_set(Vm, 50),
             Failures  = dcountif(CorrelationId, ActivityStatusValue in~ ("Failure", "Failed")),
+            Statuses  = make_set(ActivityStatusValue, 5),
+            NewRequests = dcountif(CorrelationId, FirstIngested > ago(Frequency)),
             Ips       = make_set(CallerIpAddress, 10),
             InDeployment = max(toint(InDeployment))
     by Caller, CallerOid, CallerKind, AppId, SubscriptionId
+// Fire only when this run brought a new request, so one session is not re-alerted for an hour.
+| where NewRequests > 0
 | extend Severity = case(VmCount >= 3 or Failures > 0, "High",
-                         CallerKind in ("User", "ManagedIdentity"), "Medium",
-                         "Low")
+                         InDeployment == 1, "Low",
+                         "Medium"),
+         TargetResource = tostring(Vms[0])

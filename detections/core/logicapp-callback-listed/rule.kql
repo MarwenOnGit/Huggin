@@ -1,7 +1,9 @@
 // Draft, not yet validated.
 // Phase 4 version (2026-11-03). Changes from RULE-PROPOSALS.md: see README.md.
 // A caller lists a Logic App trigger callback URL for a workflow it has not touched in 47 hours.
-let Frequency = 5m;   // must equal rule.yaml frequency: rows ingested in the last run are "new"
+let Frequency = 5m;   // must equal rule.yaml frequency. "New" = ingested in (now() - Frequency, now()].
+                      // In a scheduled rule now() is the window end, and the query runs about 5 minutes
+                      // later; the upper bound stops rows ingested in that gap from being counted twice.
 let Baseline = 47h;   // must equal rule.yaml lookback (Sentinel: period >= 2d needs frequency >= 1h)
 let Op = "MICROSOFT.LOGIC/WORKFLOWS/TRIGGERS/LISTCALLBACKURL/ACTION";
 let Activity = HuginnActivity(pack_array(Op), Baseline)
@@ -11,7 +13,7 @@ let Known = Activity
     | where IngestedAt <= ago(Frequency)
     | distinct CallerOid, Workflow;
 Activity
-| where IngestedAt > ago(Frequency)
+| where IngestedAt > ago(Frequency) and IngestedAt <= now()
 | where not(IsTrusted)
 | join kind=leftanti Known on CallerOid, Workflow
 | summarize FirstSeen = min(TimeGenerated), LastSeen = max(TimeGenerated),

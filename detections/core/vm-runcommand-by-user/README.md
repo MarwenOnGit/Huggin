@@ -1,6 +1,6 @@
 # `vm-runcommand-by-user`
 
-**Status: draft, not yet validated.** Tier: `core`. Validation: `ci`.
+**Status: draft, not yet validated.** Prepared for deployment in Phase 4 (2026-11-03). Tier: `core`. Validation: `ci`.
 
 Fenrir operations: X-08 (IDs from [FENRIR-OPERATIONS.md](../../../docs/FENRIR-OPERATIONS.md)).
 
@@ -14,7 +14,11 @@ See [rule.kql](rule.kql). Source: the draft in [RULE-PROPOSALS.md](../../../docs
 
 ## Changes from the draft
 
-- None yet. Phase 3 lab evidence may change field names and status strings.
+- **Lab evidence X-08 (2026-11-03, `lab-evidence/X-08.json`):** one `az vm run-command invoke` is **three rows**, `Start`, `Accept` (sub-status `Accepted`) and `Success`, with one `CorrelationId`; `_ResourceId` is the VM. The command text is **not** logged (`Properties_d.requestbody` empty). The rows were ingested 7 to 10 minutes after the action, and not together (Success at 21:58:02, Start and Accept at 22:00:26).
+- **Deduplication per request.** A request (`CorrelationId`) is new once, when its first row is ingested in `(now() - 5m, now()]`; the rule fires only if the run brought a new request. In a scheduled rule `now()` is the window end and the query runs about 5 minutes later, so the upper bound is needed. Simulated at the real window ends on the X-08 rows: exactly one alert for two different window alignments (per-row counting gave two).
+- **Severity.** The draft gave Low to every service principal. Now: High for 3+ VMs or any failure, Low only inside a deployment, Medium otherwise. An unknown service principal running commands on a VM is not low risk (the lab attacker is a service principal).
+- **Alert title and entities:** "Huginn: VM Run Command by {{Caller}}"; Account (caller object ID) and AzureResource (first VM).
+- **Replay:** creates a fresh `Standard_B2ats_v2` VM per run and deletes it with its disk and NIC (about 2 to 3 minutes; see docs/TESTING.md).
 
 ## False positives, false negatives, severity
 
