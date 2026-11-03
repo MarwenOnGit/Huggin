@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       ops:
-        description: "Comma-separated operations (allowed: X-13, X-13-fail, P-12)"
+        description: "Comma-separated operations (allowed: X-08, X-13, X-13-fail, P-12)"
         required: true
         default: "X-13,X-13-fail,P-12"
 
@@ -24,7 +24,7 @@ jobs:
     permissions:
       id-token: write
       contents: read
-    timeout-minutes: 15
+    timeout-minutes: 25 # X-08 creates and deletes a VM (several minutes)
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -44,6 +44,10 @@ jobs:
           set -euo pipefail
           echo "STARTED=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
           scripts/evidence/run.sh "$OPS" | tee run.log
+
+      - name: Safety net, delete any replay-created resource (VM, disk, NIC)
+        if: always()
+        run: scripts/replay/cleanup.sh
 
       - name: Job summary
         if: always()

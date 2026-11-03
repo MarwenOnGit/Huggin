@@ -1,98 +1,11 @@
 # Opt-in resources. Created for one replay run, removed right after.
 
 # --- X-08: VM Run Command -------------------------------------------------------------------
-
-resource "azurerm_virtual_network" "lab" {
-  count               = var.enable_vm ? 1 : 0
-  name                = "vnet-huginn-lab"
-  location            = coalesce(var.vm_location, data.azurerm_resource_group.lab.location)
-  resource_group_name = data.azurerm_resource_group.lab.name
-  address_space       = ["10.42.0.0/24"]
-  tags                = local.tags
-}
-
-resource "azurerm_subnet" "lab" {
-  count                = var.enable_vm ? 1 : 0
-  name                 = "snet-vm"
-  resource_group_name  = data.azurerm_resource_group.lab.name
-  virtual_network_name = azurerm_virtual_network.lab[0].name
-  address_prefixes     = ["10.42.0.0/26"]
-}
-
-# No inbound rules: Run Command goes through the VM agent, not the network.
-resource "azurerm_network_security_group" "lab" {
-  count               = var.enable_vm ? 1 : 0
-  name                = "nsg-huginn-lab"
-  location            = coalesce(var.vm_location, data.azurerm_resource_group.lab.location)
-  resource_group_name = data.azurerm_resource_group.lab.name
-  tags                = local.tags
-}
-
-resource "azurerm_subnet_network_security_group_association" "lab" {
-  count                     = var.enable_vm ? 1 : 0
-  subnet_id                 = azurerm_subnet.lab[0].id
-  network_security_group_id = azurerm_network_security_group.lab[0].id
-}
-
-resource "azurerm_network_interface" "lab" {
-  count               = var.enable_vm ? 1 : 0
-  name                = "nic-huginn-lab"
-  location            = coalesce(var.vm_location, data.azurerm_resource_group.lab.location)
-  resource_group_name = data.azurerm_resource_group.lab.name
-  tags                = local.tags
-
-  ip_configuration {
-    name                          = "internal"
-    subnet_id                     = azurerm_subnet.lab[0].id
-    private_ip_address_allocation = "Dynamic"
-  }
-}
-
-resource "azurerm_linux_virtual_machine" "lab" {
-  #checkov:skip=CKV_AZURE_50:Run Command needs the VM agent and extension operations; this is the X-08 target (ADR 0004)
-  count                           = var.enable_vm ? 1 : 0
-  name                            = "vm-huginn-lab"
-  location                        = coalesce(var.vm_location, data.azurerm_resource_group.lab.location)
-  resource_group_name             = data.azurerm_resource_group.lab.name
-  size                            = var.vm_size
-  admin_username                  = "huginn"
-  disable_password_authentication = true
-  network_interface_ids           = [azurerm_network_interface.lab[0].id]
-  allow_extension_operations      = true
-  disk_controller_type            = "NVMe"
-  secure_boot_enabled             = true
-  vtpm_enabled                    = true
-  tags                            = local.tags
-
-  admin_ssh_key {
-    username   = "huginn"
-    public_key = var.vm_admin_ssh_public_key
-  }
-
-  os_disk {
-    caching              = "ReadWrite"
-    storage_account_type = "Standard_LRS"
-  }
-
-  source_image_reference {
-    publisher = "Canonical"
-    offer     = "ubuntu-24_04-lts"
-    sku       = "server"
-    version   = "latest"
-  }
-
-  identity {
-    type         = "UserAssigned"
-    identity_ids = [azurerm_user_assigned_identity.lab.id]
-  }
-
-  lifecycle {
-    precondition {
-      condition     = var.vm_admin_ssh_public_key != null
-      error_message = "enable_vm needs vm_admin_ssh_public_key (a throwaway key generated for this run)."
-    }
-  }
-}
+# The VM itself is NOT managed by Terraform. Each evidence or replay run creates a fresh VM in
+# this subnet with the Azure CLI (scripts/replay/lib.sh: huginn_vm_create), runs one benign
+# Run Command, and deletes the VM, its OS disk and its NIC through a trap. A VM must never be
+# left running or deallocated: deallocated VMs still count against the vCPU quota.
+# This file only holds the free network the per-run VM attaches to (moved to network.tf).
 
 # --- X-10: App Service publishing credentials -----------------------------------------------
 

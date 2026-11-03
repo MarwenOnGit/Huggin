@@ -7,10 +7,12 @@
 # - every response is discarded (> /dev/null); nothing is printed, stored or reused;
 # - no managed-identity token is ever requested.
 #
-# Usage: scripts/evidence/run.sh X-13,P-12,X-13-fail
+# Usage: scripts/evidence/run.sh X-08,X-13,P-12,X-13-fail
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+# shellcheck source=../replay/lib.sh
+source "$ROOT/scripts/replay/lib.sh"   # VM helpers for X-08
 RG="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["lab_resource_group"])' "$ROOT/infra/shared/bootstrap.json")"
 SUB="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["subscription_id"])' "$ROOT/infra/shared/bootstrap.json")"
 
@@ -42,6 +44,17 @@ do_op() {
         echo "unexpected success" >&2; return 1
       fi
       ;;
+    X-08) # VM Run Command on a FRESH VM created for this run, deleted through a trap
+      huginn_preflight
+      local vm="vm-huginn-replay-$(huginn_run_id)"
+      trap 'huginn_vm_delete "'"$vm"'"' EXIT
+      huginn_log "create $vm ($HUGINN_VM_SIZE, no public IP)"
+      huginn_vm_create "$vm"
+      huginn_log "run-command invoke on $vm: hostname (output discarded)"
+      az vm run-command invoke -g "$RG" -n "$vm" --command-id RunShellScript --scripts hostname > /dev/null
+      huginn_vm_delete "$vm"
+      trap - EXIT
+      ;;
     P-12) # Storage listKeys, same API version as Fenrir
       id="$(one_id Microsoft.Storage/storageAccounts)"
       az rest --method post --url "https://management.azure.com${id}/listKeys?api-version=2023-01-01" > /dev/null
@@ -55,6 +68,6 @@ do_op() {
 
 IFS=',' read -r -a OPS <<<"${1:?usage: run.sh OP[,OP...]}"
 for op in "${OPS[@]}"; do
-  [[ "$op" =~ ^(X-13|X-13-fail|P-12)$ ]] || { echo "op not allowed: $op" >&2; exit 2; }
+  [[ "$op" =~ ^(X-08|X-13|X-13-fail|P-12)$ ]] || { echo "op not allowed: $op" >&2; exit 2; }
 done
 for op in "${OPS[@]}"; do do_op "$op"; done

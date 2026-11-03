@@ -25,9 +25,9 @@ output "user_assigned_identity_id" {
   value       = azurerm_user_assigned_identity.lab.id
 }
 
-output "vm_id" {
-  description = "X-08 target, if enabled."
-  value       = try(azurerm_linux_virtual_machine.lab[0].id, null)
+output "vm_subnet_id" {
+  description = "Subnet for the per-run X-08 VM (created and deleted by the replay scripts)."
+  value       = azurerm_subnet.vm.id
 }
 
 output "web_app_id" {
