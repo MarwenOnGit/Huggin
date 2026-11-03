@@ -3,7 +3,7 @@
 This file is the single source of truth for what works. A rule is "validated" only after a lab
 run produced the expected alert, with a date and evidence. Everything else is a draft.
 
-Last updated: 2026-11-03 (Phase 2, bootstrap applied).
+Last updated: 2026-11-03 (Phase 2 applied).
 
 ## Environment
 
@@ -24,7 +24,7 @@ Last updated: 2026-11-03 (Phase 2, bootstrap applied).
 |---|---|---|
 | 0. Plan and prerequisites | done | 2026-11-03 |
 | 1. Repo layout | done (local only) | 2026-11-03 |
-| 2. Infrastructure | written; fmt, validate, tflint, checkov clean. **bootstrap applied** (20 resources). sentinel and lab planned (18 and 5 to add), awaiting approval. | 2026-11-03 |
+| 2. Infrastructure | **Applied**: bootstrap (20), sentinel (18, no rules: `deploy_rules = false`), lab always-on (5). Second plan of sentinel and lab: no changes. | 2026-11-03 |
 | 3. Lab evidence | not started | |
 | 4. Detections | drafts copied into rule folders, none validated | |
 | 5. Testing | static tests only (`make test`) | |
@@ -53,7 +53,7 @@ Last updated: 2026-11-03 (Phase 2, bootstrap applied).
 
 | # | Question | Rules that depend on it | Answer | Evidence |
 |---|---|---|---|---|
-| 1 | Exact `ActivityStatusValue` strings (`Start`/`Success`/`Failure` or `Started`/`Succeeded`/`Failed`) | all core | open | |
+| 1 | Exact `ActivityStatusValue` strings (`Start`/`Success`/`Failure` or `Started`/`Succeeded`/`Failed`) | all core | partial: `Start` and `Success` seen on 2026-11-03 for a non-Fenrir write. Still to confirm for the six Fenrir actions and a failure. | |
 | 2 | Does `Claims_d` keep `idtyp`, `appid`, `xms_mirid` and the object ID claim? | `HuginnActivity`, all core, `mi-control-plane-new-ip` | open | |
 | 3 | Is `Caller` the object ID or the app ID for service principals and managed identities? | all core | open | |
 | 4 | Do X-10 rows keep `/config/publishingcredentials` in `_ResourceId` or `Properties_d.entity`? | `appservice-publish-creds` | open | |
@@ -61,8 +61,22 @@ Last updated: 2026-11-03 (Phase 2, bootstrap applied).
 | 6 | Is `Properties_d.requestbody` populated for role assignment and VM writes? | `rbac-self-assignment`, `uai-attached-to-host` | open | |
 | 7 | Are X-08, X-14 and P-13 recorded as expected, and how many rows per call? | `vm-runcommand-by-user`, `aci-exec`, `acr-admin-creds-listed` | open | |
 | 8 | Ingestion delay from action to `AzureActivity` row (sets the alert timeout in `validate_alert.py`) | CI loop | open | |
-| 9 | Does `_GetWatchlist('HuginnTrustedAutomation')` keep the custom columns, and does the function still compile if the watchlist is empty? | `HuginnActivity` | open | |
+| 9 | Does `_GetWatchlist('HuginnTrustedAutomation')` keep the custom columns, and does the function still compile if the watchlist is empty? | `HuginnActivity` | partial: custom columns are kept and the function compiles with the watchlist populated (2026-11-03). The empty case is untested; Terraform always adds the deploy principal rows, so it does not arise. | |
 | 10 | Does `listCallbackUrl` from the azurerm provider (Terraform refresh of the lab Logic App) show up as the deployment principal, so the watchlist must cover it? | `logicapp-callback-listed` | open | |
+
+## Deployed (2026-11-03)
+
+| Item | Value |
+|---|---|
+| Workspace | `law-huginn` in `huginn-sentinel-rg`, workspace ID `b15fe383-5018-4ce4-ada1-6e06f8c83bee` |
+| State | `sthuginntfb8182282bc` / `tfstate` (sentinel.tfstate, lab.tfstate). Bootstrap state is local. |
+| Deploy principal | `huginn-github-deploy`, client `7dc8cd97-cd36-4c93-ba16-c0cc0c2dd6e7`, object `efb16475-4aa5-4d35-a8ff-52239d1c6e02` |
+| Lab attacker | `huginn-lab-attacker`, client `a9d1d6db-367e-4648-a22c-3b29cfc23a7b`, object `380b1f3c-3bf0-44de-b940-e035eb1a0084` |
+| Lab | `logic-huginn-lab` (trigger `manual`), `sthuginnlab30e2449d`, `id-huginn-lab` |
+| Function | `HuginnActivity(...)` compiles and runs against the workspace (0 rows, before Activity log data arrived) |
+| Activity log connector | Working. First rows at 16:41 local: `MICROSOFT.OPERATIONSMANAGEMENT/SOLUTIONS/WRITE` (the Sentinel onboarding itself), ingestion lag about 9 minutes. |
+| Watchlist | All 12 rows readable through `_GetWatchlist` after about 10 minutes (6 were visible right after apply). |
+| Lab storage, public network disabled | Terraform refresh works (no drift), so blob properties are read through ARM. Open question closed. |
 
 ## Infrastructure facts checked on 2026-11-03 (provider schema and source, azurerm v5.12.0)
 
@@ -89,9 +103,6 @@ Last updated: 2026-11-03 (Phase 2, bootstrap applied).
 
 - **Rule deployment is gated** by `deploy_rules` (default false). Rules are created only after
   Activity log data has reached the workspace and Phase 3 has fixed the drafts.
-- **Lab storage with public network access disabled**: confirm at the first lab plan that the
-  azurerm provider can still refresh it (blob properties should go through ARM).
-
 - **Duplicate alerts.** Most drafts look at the last 1 hour but run every 5 minutes, so one event
   would raise up to 12 alerts. Options: filter recent events on `ingestion_time()` against the
   rule frequency, or use alert grouping. Rule-level suppression is not an option, because it would
