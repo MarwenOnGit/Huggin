@@ -1,0 +1,25 @@
+id: storage-keys-listed
+name: "Huginn - Storage account keys listed in a suspicious pattern"
+tier: core
+fenrir_ops: [P-12]
+# status: draft | validated (validated only after a lab run proved it; see docs/STATUS.md)
+status: draft
+# validation: ci (benign replay in replay.yml) | manual (docs/PURPLE-TEAM.md or a manual replay)
+validation: ci
+# deployable: false = needs a licence or a table this tenant does not have
+deployable: true
+requires_licence: none
+# severity: default only; the query's Severity column overrides it per alert
+severity: Medium
+severity_column: Severity
+frequency: PT5M
+# lookback: Sentinel query period, at most P14D; must cover the query's longest baseline
+lookback: P14D
+trigger_threshold: 0
+mitre:
+  tactics: [CredentialAccess]
+  techniques: [T1552]
+branches:
+  A-mi-new-ip: manual     # needs a stolen-identity scenario; covered by the purple-team run
+  B-3plus-accounts: ci
+  C-new-pair: ci

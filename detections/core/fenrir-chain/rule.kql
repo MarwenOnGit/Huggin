@@ -1,0 +1,37 @@
+// Draft, not yet validated.
+// Core variant: AzureActivity only. The SigninLogs device code boost from
+// RULE-PROPOSALS.md is removed (no P1/P2 on this tenant); see README.md.
+let Window = 4h;
+let StageMap = datatable(Op:string, Stage:string) [
+    "MICROSOFT.COMPUTE/VIRTUALMACHINES/RUNCOMMAND/ACTION",                  "HostExecution",
+    "MICROSOFT.COMPUTE/VIRTUALMACHINES/RUNCOMMANDS/WRITE",                  "HostExecution",
+    "MICROSOFT.WEB/SITES/CONFIG/LIST/ACTION",                               "AppServiceCreds",
+    "MICROSOFT.WEB/SITES/PUBLISHXML/ACTION",                                "AppServiceCreds",
+    "MICROSOFT.LOGIC/WORKFLOWS/TRIGGERS/LISTCALLBACKURL/ACTION",            "LogicAppCallback",
+    "MICROSOFT.CONTAINERINSTANCE/CONTAINERGROUPS/CONTAINERS/EXEC/ACTION",   "ContainerExec",
+    "MICROSOFT.STORAGE/STORAGEACCOUNTS/LISTKEYS/ACTION",                    "SecretListing",
+    "MICROSOFT.CONTAINERREGISTRY/REGISTRIES/LISTCREDENTIALS/ACTION",        "SecretListing"
+];
+let UserSide = HuginnActivity(toscalar(StageMap | summarize make_list(Op)), Window)
+    | where CallerKind != "ManagedIdentity" and not(IsTrusted)
+    | lookup kind=inner StageMap on Op
+    | summarize Stages = make_set(Stage), StageCount = dcount(Stage),
+                Targets = dcount(Rid),
+                FirstStage = min(TimeGenerated), LastStage = max(TimeGenerated),
+                UserIps = make_set(CallerIpAddress, 20)
+        by Caller, CallerOid;
+let MiSide = AzureActivity
+    | where TimeGenerated > ago(Window)
+    | extend MiResId = tolower(tostring(Claims_d.xms_mirid))
+    | where isnotempty(MiResId)
+    | project MiTime = TimeGenerated, MiResId, MiOp = OperationNameValue, MiIp = CallerIpAddress;
+let Pivot = UserSide
+    | mv-expand UserIp = UserIps to typeof(string)
+    | join kind=inner MiSide on $left.UserIp == $right.MiIp
+    | where MiTime between (FirstStage .. (LastStage + 2h))
+    | summarize MiIdentities = make_set(MiResId, 10), MiOps = make_set(MiOp, 10) by CallerOid;
+UserSide
+| join kind=leftouter Pivot on CallerOid
+| extend MiPivot = coalesce(array_length(MiIdentities), 0) > 0
+| where StageCount >= 2 or Targets >= 3 or MiPivot
+| extend Severity = iff(MiPivot, "High", "Medium")

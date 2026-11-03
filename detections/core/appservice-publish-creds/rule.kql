@@ -1,0 +1,19 @@
+// Draft, not yet validated.
+HuginnActivity(dynamic([
+    "MICROSOFT.WEB/SITES/CONFIG/LIST/ACTION",
+    "MICROSOFT.WEB/SITES/SLOTS/CONFIG/LIST/ACTION",
+    "MICROSOFT.WEB/SITES/PUBLISHXML/ACTION",
+    "MICROSOFT.WEB/SITES/SLOTS/PUBLISHXML/ACTION"]), 1h)
+| extend Entity = tolower(tostring(Properties_d.entity))
+// verify in lab: does the resource ID keep the /config/publishingcredentials suffix?
+| where Op endswith "/PUBLISHXML/ACTION"
+     or Rid has "/config/publishingcredentials"
+     or Entity has "/config/publishingcredentials"
+| where not(IsTrusted)
+| extend Site = extract(@"^(.*/sites/[^/]+(/slots/[^/]+)?)", 1, Rid)
+| summarize FirstSeen = min(TimeGenerated), LastSeen = max(TimeGenerated),
+            SiteCount = dcount(Site), Sites = make_set(Site, 50),
+            Ips = make_set(CallerIpAddress, 10),
+            InDeployment = max(toint(InDeployment))
+    by Caller, CallerOid, CallerKind, AppId, SubscriptionId
+| extend Severity = iff(SiteCount >= 2 and InDeployment == 0, "High", "Medium")

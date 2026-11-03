@@ -1,0 +1,21 @@
+id: graph-directory-recon
+name: "Huginn - Directory reconnaissance through Microsoft Graph"
+tier: identity
+fenrir_ops: [E-01, E-02, E-03, E-04, E-05, E-06, E-07, X-06]
+# status: draft | validated (validated only after a lab run proved it; see docs/STATUS.md)
+status: draft
+# validation: ci (benign replay in replay.yml) | manual (docs/PURPLE-TEAM.md or a manual replay)
+validation: manual
+# deployable: false = needs a licence or a table this tenant does not have
+deployable: false
+requires_licence: entra-p1-p2
+# severity: default only; the query's Severity column overrides it per alert
+severity: Low
+severity_column: Severity
+frequency: PT1H
+# lookback: Sentinel query period, at most P14D; must cover the query's longest baseline
+lookback: PT1H
+trigger_threshold: 0
+mitre:
+  tactics: [Discovery]
+  techniques: [T1087.004, T1069.003]

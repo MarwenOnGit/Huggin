@@ -1,0 +1,15 @@
+// Draft, not yet validated.
+let Lookback = 1h;
+let Baseline = 14d;
+let Flows = dynamic(["deviceCode", "ropc"]);   // verify in lab: exact AuthenticationProtocol strings
+let Known = SigninLogs
+    | where TimeGenerated between (ago(Baseline) .. ago(Lookback))
+    | where AuthenticationProtocol in~ (Flows) and ResultType == "0"
+    | distinct UserId, AuthenticationProtocol;
+SigninLogs
+| where TimeGenerated > ago(Lookback)
+| where AuthenticationProtocol in~ (Flows) and ResultType == "0"
+| join kind=leftanti Known on UserId, AuthenticationProtocol
+| project TimeGenerated, UserPrincipalName, UserId, AppId, AppDisplayName, ResourceDisplayName,
+          AuthenticationProtocol, IPAddress, Location, UserAgent, ConditionalAccessStatus
+| extend Severity = iff(AuthenticationProtocol =~ "ropc", "High", "Medium")

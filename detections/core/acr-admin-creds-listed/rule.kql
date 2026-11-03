@@ -1,0 +1,18 @@
+// Draft, not yet validated.
+let Lookback = 1h;
+let Baseline = 14d;
+let OidClaim = "http://schemas.microsoft.com/identity/claims/objectidentifier";
+let PairHistory = AzureActivity
+    | where TimeGenerated between (ago(Baseline) .. ago(Lookback))
+    | where OperationNameValue =~ "MICROSOFT.CONTAINERREGISTRY/REGISTRIES/LISTCREDENTIALS/ACTION"
+    | extend CallerOid = tolower(tostring(Claims_d[OidClaim])),
+             Registry  = extract(@"^(.*/registries/[^/]+)", 1, tolower(_ResourceId))
+    | distinct CallerOid, Registry;
+HuginnActivity(dynamic(["MICROSOFT.CONTAINERREGISTRY/REGISTRIES/LISTCREDENTIALS/ACTION"]), Lookback)
+| where not(IsTrusted)
+| extend Registry = extract(@"^(.*/registries/[^/]+)", 1, Rid)
+| join kind=leftanti PairHistory on CallerOid, Registry
+| summarize FirstSeen = min(TimeGenerated), Registries = make_set(Registry, 50),
+            Ips = make_set(CallerIpAddress, 10), InDeployment = max(toint(InDeployment))
+    by Caller, CallerOid, CallerKind, AppId, SubscriptionId
+| extend Severity = case(CallerKind == "ManagedIdentity", "High", InDeployment == 1, "Low", "Medium")

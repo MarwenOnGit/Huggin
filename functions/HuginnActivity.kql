@@ -1,0 +1,32 @@
+// Draft, not yet validated.
+// Saved as workspace function HuginnActivity(Ops:dynamic, Lookback:timespan)
+let Trusted = _GetWatchlist('HuginnTrustedAutomation')
+    | extend PrincipalId = tolower(tostring(PrincipalId)),
+             ScopePrefix = tolower(tostring(ScopePrefix)),
+             Operation   = toupper(tostring(Operation)),
+             Expires     = todatetime(ExpiresOn)
+    | where isnull(Expires) or Expires > now()
+    | project PrincipalId, ScopePrefix, Operation;
+let DeploymentCorr = AzureActivity
+    | where TimeGenerated > ago(Lookback + 1h)
+    | where OperationNameValue =~ "MICROSOFT.RESOURCES/DEPLOYMENTS/WRITE"
+    | distinct CorrelationId;
+let Events = AzureActivity
+    | where TimeGenerated > ago(Lookback)
+    | extend Op = toupper(OperationNameValue)
+    | where Op in (Ops)
+    | extend CallerOid = tolower(tostring(Claims_d["http://schemas.microsoft.com/identity/claims/objectidentifier"])),
+             AppId     = tolower(tostring(Claims_d.appid)),
+             MiResId   = tolower(tostring(Claims_d.xms_mirid)),   // verify in lab: present for managed identities
+             Rid       = tolower(_ResourceId);
+let TrustedHits = Events
+    | join kind=inner Trusted on $left.CallerOid == $right.PrincipalId, $left.Op == $right.Operation
+    | where Rid startswith ScopePrefix
+    | distinct CorrelationId;
+Events
+| extend IsTrusted    = CorrelationId in (TrustedHits),
+         InDeployment = CorrelationId in (DeploymentCorr),
+         CallerKind   = case(isnotempty(MiResId), "ManagedIdentity",
+                             Caller has "@",      "User",
+                             isnotempty(AppId),   "ServicePrincipal",
+                                                  "Unknown")

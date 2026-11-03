@@ -1,0 +1,39 @@
+// Draft, not yet validated.
+let Lookback = 1h;
+let Baseline = 14d;
+let Op = "MICROSOFT.STORAGE/STORAGEACCOUNTS/LISTKEYS/ACTION";
+let OidClaim = "http://schemas.microsoft.com/identity/claims/objectidentifier";
+let PairHistory = AzureActivity
+    | where TimeGenerated between (ago(Baseline) .. ago(Lookback))
+    | where OperationNameValue =~ Op
+    | extend CallerOid = tolower(tostring(Claims_d[OidClaim])),
+             Account   = extract(@"^(.*/storageaccounts/[^/]+)", 1, tolower(_ResourceId))
+    | distinct CallerOid, Account;
+let MiIpHistory = AzureActivity
+    | where TimeGenerated between (ago(Baseline) .. ago(Lookback))
+    | where isnotempty(tostring(Claims_d.xms_mirid))
+    | extend CallerOid = tolower(tostring(Claims_d[OidClaim]))
+    | distinct CallerOid, CallerIpAddress;
+let Recent = HuginnActivity(dynamic(["MICROSOFT.STORAGE/STORAGEACCOUNTS/LISTKEYS/ACTION"]), Lookback)
+    | extend Account = extract(@"^(.*/storageaccounts/[^/]+)", 1, Rid);
+let BranchA = Recent
+    | where CallerKind == "ManagedIdentity"
+    | join kind=leftanti MiIpHistory on CallerOid, CallerIpAddress
+    | extend Branch = "A: managed identity from new IP";
+let BranchB = Recent
+    | where not(IsTrusted)
+    | summarize Accounts = dcount(Account) by CallerOid
+    | where Accounts >= 3
+    | join kind=inner Recent on CallerOid
+    | extend Branch = "B: 3+ accounts in 1h";
+let BranchC = Recent
+    | where not(IsTrusted) and not(InDeployment)
+    | join kind=leftanti PairHistory on CallerOid, Account
+    | extend Branch = "C: new caller-account pair";
+union BranchA, BranchB, BranchC
+| summarize Branches = make_set(Branch),
+            AccountCount = dcount(Account), Accounts = make_set(Account, 50),
+            Ips = make_set(CallerIpAddress, 10),
+            FirstSeen = min(TimeGenerated), LastSeen = max(TimeGenerated)
+    by Caller, CallerOid, CallerKind, AppId, SubscriptionId
+| extend Severity = iff(set_has_element(Branches, "A: managed identity from new IP"), "High", "Medium")

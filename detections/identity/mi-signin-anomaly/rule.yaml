@@ -1,0 +1,21 @@
+id: mi-signin-anomaly
+name: "Huginn - Managed identity token for a resource it never requested"
+tier: identity
+fenrir_ops: [X-08, X-11]
+# status: draft | validated (validated only after a lab run proved it; see docs/STATUS.md)
+status: draft
+# validation: ci (benign replay in replay.yml) | manual (docs/PURPLE-TEAM.md or a manual replay)
+validation: manual
+# deployable: false = needs a licence or a table this tenant does not have
+deployable: false
+requires_licence: entra-p1-p2
+# severity: default only; the query's Severity column overrides it per alert
+severity: Medium
+severity_column: Severity
+frequency: PT1H
+# lookback: Sentinel query period, at most P14D; must cover the query's longest baseline
+lookback: P14D
+trigger_threshold: 0
+mitre:
+  tactics: [InitialAccess, Persistence]
+  techniques: [T1078.004]

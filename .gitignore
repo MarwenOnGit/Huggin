@@ -1,0 +1,26 @@
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+tfplan
+crash.log
+*.tfvars
+!*.tfvars.example
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraform.tflint.hcl
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+
+# Replay and evidence scratch output (only redacted files under lab-evidence/ are committed)
+lab-evidence/raw/
+results/
+*.secret
+.env

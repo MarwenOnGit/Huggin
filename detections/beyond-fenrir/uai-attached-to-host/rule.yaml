@@ -1,0 +1,21 @@
+id: uai-attached-to-host
+name: "Huginn - User-assigned identity newly attached to a compute host"
+tier: beyond-fenrir
+fenrir_ops: []
+# status: draft | validated (validated only after a lab run proved it; see docs/STATUS.md)
+status: draft
+# validation: ci (benign replay in replay.yml) | manual (docs/PURPLE-TEAM.md or a manual replay)
+validation: manual
+# deployable: false = needs a licence or a table this tenant does not have
+deployable: true
+requires_licence: none
+# severity: default only; the query's Severity column overrides it per alert
+severity: High
+severity_column: Severity
+frequency: PT1H
+# lookback: Sentinel query period, at most P14D; must cover the query's longest baseline
+lookback: P14D
+trigger_threshold: 0
+mitre:
+  tactics: [PrivilegeEscalation, Persistence]
+  techniques: [T1098]

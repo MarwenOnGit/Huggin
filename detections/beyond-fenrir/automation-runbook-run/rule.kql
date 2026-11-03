@@ -1,0 +1,29 @@
+// Draft, not yet validated.
+let Lookback = 1h;
+let Baseline = 14d;
+let OidClaim = "http://schemas.microsoft.com/identity/claims/objectidentifier";
+let AccountOf = (id:string) { extract(@"^(.*/automationaccounts/[^/]+)", 1, tolower(id)) };
+let Edits = HuginnActivity(dynamic([
+        "MICROSOFT.AUTOMATION/AUTOMATIONACCOUNTS/RUNBOOKS/DRAFT/WRITE",
+        "MICROSOFT.AUTOMATION/AUTOMATIONACCOUNTS/RUNBOOKS/PUBLISH/ACTION",
+        "MICROSOFT.AUTOMATION/AUTOMATIONACCOUNTS/RUNBOOKS/WRITE"]), Lookback + 2h)
+    | extend Account = AccountOf(Rid)
+    | summarize LastEdit = max(TimeGenerated) by CallerOid, Account;
+let JobHistory = AzureActivity
+    | where TimeGenerated between (ago(Baseline) .. ago(Lookback))
+    | where OperationNameValue =~ "MICROSOFT.AUTOMATION/AUTOMATIONACCOUNTS/JOBS/WRITE"
+    | extend CallerOid = tolower(tostring(Claims_d[OidClaim])), Account = AccountOf(_ResourceId)
+    | distinct CallerOid, Account
+    | extend SeenBefore = true;
+HuginnActivity(dynamic(["MICROSOFT.AUTOMATION/AUTOMATIONACCOUNTS/JOBS/WRITE"]), Lookback)
+| where not(IsTrusted)
+| extend Account = AccountOf(Rid)
+| join kind=leftouter Edits on CallerOid, Account
+| join kind=leftouter JobHistory on CallerOid, Account
+| extend EditThenRun  = isnotnull(LastEdit) and LastEdit <= TimeGenerated,
+         NewForCaller = isnull(SeenBefore)
+| where EditThenRun or NewForCaller
+| summarize FirstSeen = min(TimeGenerated), Jobs = dcount(CorrelationId),
+            EditThenRun = max(toint(EditThenRun))
+    by Caller, CallerOid, CallerKind, AppId, Account, SubscriptionId
+| extend Severity = iff(EditThenRun == 1, "High", "Medium")

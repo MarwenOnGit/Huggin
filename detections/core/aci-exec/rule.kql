@@ -1,0 +1,10 @@
+// Draft, not yet validated.
+HuginnActivity(dynamic(["MICROSOFT.CONTAINERINSTANCE/CONTAINERGROUPS/CONTAINERS/EXEC/ACTION"]), 1h)
+| where not(IsTrusted)
+| extend ContainerGroup = extract(@"^(.*/containergroups/[^/]+)", 1, Rid)
+| summarize FirstSeen = min(TimeGenerated), LastSeen = max(TimeGenerated),
+            GroupCount = dcount(ContainerGroup), Groups = make_set(ContainerGroup, 50),
+            Failures = dcountif(CorrelationId, ActivityStatusValue in~ ("Failure", "Failed")),
+            Ips = make_set(CallerIpAddress, 10)
+    by Caller, CallerOid, CallerKind, AppId, SubscriptionId
+| extend Severity = iff(GroupCount >= 2 or Failures > 0, "High", "Medium")

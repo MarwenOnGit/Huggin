@@ -1,0 +1,18 @@
+// Draft, not yet validated.
+HuginnActivity(dynamic([
+    "MICROSOFT.COMPUTE/VIRTUALMACHINES/RUNCOMMAND/ACTION",
+    "MICROSOFT.COMPUTE/VIRTUALMACHINES/RUNCOMMANDS/WRITE",
+    "MICROSOFT.COMPUTE/VIRTUALMACHINESCALESETS/VIRTUALMACHINES/RUNCOMMAND/ACTION",
+    "MICROSOFT.HYBRIDCOMPUTE/MACHINES/RUNCOMMANDS/WRITE"]), 1h)
+| where not(IsTrusted)
+| extend Vm = extract(@"^(.*/(virtualmachines|machines)/[^/]+)", 1, Rid)
+| summarize FirstSeen = min(TimeGenerated), LastSeen = max(TimeGenerated),
+            Requests  = dcount(CorrelationId),
+            VmCount   = dcount(Vm), Vms = make_set(Vm, 50),
+            Failures  = dcountif(CorrelationId, ActivityStatusValue in~ ("Failure", "Failed")),
+            Ips       = make_set(CallerIpAddress, 10),
+            InDeployment = max(toint(InDeployment))
+    by Caller, CallerOid, CallerKind, AppId, SubscriptionId
+| extend Severity = case(VmCount >= 3 or Failures > 0, "High",
+                         CallerKind in ("User", "ManagedIdentity"), "Medium",
+                         "Low")

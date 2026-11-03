@@ -1,0 +1,21 @@
+// Draft, not yet validated.
+let Lookback = 1h;
+let Baseline = 14d;
+let OidClaim = "http://schemas.microsoft.com/identity/claims/objectidentifier";
+let Mi = AzureActivity
+    | where TimeGenerated > ago(Baseline)
+    | extend MiResId = tolower(tostring(Claims_d.xms_mirid))   // verify in lab
+    | where isnotempty(MiResId)
+    | extend CallerOid = tolower(tostring(Claims_d[OidClaim]));
+let Known = Mi
+    | where TimeGenerated < ago(Lookback)
+    | distinct CallerOid, CallerIpAddress;
+let KnownIds = Known | distinct CallerOid;
+Mi
+| where TimeGenerated > ago(Lookback)
+| where CallerOid in (KnownIds)            // identity must have history
+| join kind=leftanti Known on CallerOid, CallerIpAddress
+| summarize FirstSeen = min(TimeGenerated), LastSeen = max(TimeGenerated),
+            Ops = make_set(OperationNameValue, 20), Resources = make_set(_ResourceId, 20)
+    by Caller, CallerOid, MiResId, CallerIpAddress, SubscriptionId
+| extend Severity = "High"   // added in Phase 1: the draft had no Severity column

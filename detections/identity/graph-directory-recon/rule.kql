@@ -1,0 +1,21 @@
+// Draft, not yet validated.
+MicrosoftGraphActivityLogs
+| where TimeGenerated > ago(1h)
+| where RequestMethod == "GET"
+| extend Path = replace_regex(tolower(tostring(parse_url(RequestUri).Path)), @"^/(v1\.0|beta)", "")
+| extend View = case(
+      Path startswith "/rolemanagement/directory/roleassignments",                  "DirectoryRoleAssignments",
+      Path startswith "/rolemanagement/directory/roleeligibilityscheduleinstances", "PimEligibility",
+      Path startswith "/serviceprincipals",                                         "AllServicePrincipals",
+      Path has "/ownedobjects",                                                     "OwnedObjects",
+      Path has "/transitivememberof",                                               "TransitiveGroups",
+      Path startswith "/domains",                                                   "Domains",
+      Path has "/manageddevices",                                                   "ManagedDevices",
+      "")
+| where isnotempty(View)
+| summarize Views = make_set(View), ViewCount = dcount(View), Requests = count(),
+            Apps = make_set(AppId, 5), Ips = make_set(IPAddress, 10),
+            FirstSeen = min(TimeGenerated), LastSeen = max(TimeGenerated)
+    by UserId, ServicePrincipalId
+| where ViewCount >= 4
+| extend Severity = "Low"    // added in Phase 1: the draft had no Severity column

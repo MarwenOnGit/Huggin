@@ -1,0 +1,36 @@
+// Draft, not yet validated.
+let Lookback = 1h;
+let Baseline = 14d;
+let HostWrites = dynamic([
+    "MICROSOFT.COMPUTE/VIRTUALMACHINES/WRITE",
+    "MICROSOFT.COMPUTE/VIRTUALMACHINESCALESETS/WRITE",
+    "MICROSOFT.WEB/SITES/WRITE",
+    "MICROSOFT.WEB/SITES/SLOTS/WRITE",
+    "MICROSOFT.CONTAINERINSTANCE/CONTAINERGROUPS/WRITE",
+    "MICROSOFT.LOGIC/WORKFLOWS/WRITE",
+    "MICROSOFT.AUTOMATION/AUTOMATIONACCOUNTS/WRITE"]);
+let UaiPattern = @'(/subscriptions/[^"]+/providers/microsoft\.managedidentity/userassignedidentities/[^"]+)';
+let Pairs = (T:(TimeGenerated:datetime, _ResourceId:string, Properties_d:dynamic)) {
+    T
+    | extend Body = tolower(tostring(Properties_d.requestbody))   // verify in lab: populated for these writes
+    | where Body has "userassignedidentities"
+    | extend Uai = extract_all(UaiPattern, Body), HostId = tolower(_ResourceId)
+    | mv-expand Uai to typeof(string)
+};
+let Known = AzureActivity
+    | where TimeGenerated between (ago(Baseline) .. ago(Lookback))
+    | where toupper(OperationNameValue) in (HostWrites)
+    | project TimeGenerated, _ResourceId, Properties_d
+    | invoke Pairs()
+    | distinct HostId, Uai;
+HuginnActivity(HostWrites, Lookback)
+| where not(IsTrusted)
+| extend Body = tolower(tostring(Properties_d.requestbody))
+| where Body has "userassignedidentities"
+| extend Uai = extract_all(UaiPattern, Body), HostId = Rid
+| mv-expand Uai to typeof(string)
+| join kind=leftanti Known on HostId, Uai
+| summarize FirstSeen = min(TimeGenerated), NewIdentities = make_set(Uai, 20),
+            InDeployment = max(toint(InDeployment))
+    by Caller, CallerOid, CallerKind, AppId, HostId, SubscriptionId
+| extend Severity = iff(CallerKind == "User" and InDeployment == 0, "High", "Medium")

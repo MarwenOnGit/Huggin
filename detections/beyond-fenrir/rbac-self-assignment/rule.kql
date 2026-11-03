@@ -1,0 +1,20 @@
+// Draft, not yet validated.
+AzureActivity
+| where TimeGenerated > ago(1h)
+| where OperationNameValue =~ "MICROSOFT.AUTHORIZATION/ROLEASSIGNMENTS/WRITE"
+| extend Body = todynamic(tostring(Properties_d.requestbody))   // verify in lab: on which status row, and key casing
+| extend TargetPrincipal = tolower(coalesce(tostring(Body.Properties.PrincipalId), tostring(Body.properties.principalId))),
+         RoleDefinitionId = coalesce(tostring(Body.Properties.RoleDefinitionId), tostring(Body.properties.roleDefinitionId)),
+         CallerOid = tolower(tostring(Claims_d["http://schemas.microsoft.com/identity/claims/objectidentifier"])),
+         AppId     = tolower(tostring(Claims_d.appid))
+| where isnotempty(TargetPrincipal) and TargetPrincipal == CallerOid
+| where AppId != "01fc33a7-78ba-4d2f-a4b7-768e336e890e"          // MS-PIM activations
+| extend RoleGuid = tolower(extract(@"([0-9a-fA-F-]{36})$", 1, RoleDefinitionId))
+| summarize arg_min(TimeGenerated, *) by CorrelationId
+| project TimeGenerated, Caller, CallerOid, AppId, CallerIpAddress, Scope = _ResourceId,
+          RoleGuid, ActivityStatusValue, CorrelationId
+| extend Severity = iff(RoleGuid in ("8e3af657-a8ff-443c-a75c-2fe8c4bcb635",   // Owner
+                                     "18d7d88d-d35e-4fb5-a5c3-7773c20a72d9",   // User Access Administrator
+                                     "b24988ac-6180-42a0-ab88-20f7382dd24c",   // Contributor
+                                     "f58310d9-a9f6-439a-9e8d-f62e7b41a168"),  // RBAC Administrator
+                        "High", "Medium")

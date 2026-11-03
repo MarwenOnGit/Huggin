@@ -1,0 +1,21 @@
+id: appservice-publish-creds
+name: "Huginn - App Service publishing credentials retrieved"
+tier: core
+fenrir_ops: [X-10]
+# status: draft | validated (validated only after a lab run proved it; see docs/STATUS.md)
+status: draft
+# validation: ci (benign replay in replay.yml) | manual (docs/PURPLE-TEAM.md or a manual replay)
+validation: ci
+# deployable: false = needs a licence or a table this tenant does not have
+deployable: true
+requires_licence: none
+# severity: default only; the query's Severity column overrides it per alert
+severity: Medium
+severity_column: Severity
+frequency: PT5M
+# lookback: Sentinel query period, at most P14D; must cover the query's longest baseline
+lookback: PT1H
+trigger_threshold: 0
+mitre:
+  tactics: [CredentialAccess]
+  techniques: [T1552]
