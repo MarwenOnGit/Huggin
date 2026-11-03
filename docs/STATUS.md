@@ -3,7 +3,7 @@
 This file is the single source of truth for what works. A rule is "validated" only after a lab
 run produced the expected alert, with a date and evidence. Everything else is a draft.
 
-Last updated: 2026-11-03 (Phase 1).
+Last updated: 2026-11-03 (Phase 2, bootstrap applied).
 
 ## Environment
 
@@ -14,6 +14,8 @@ Last updated: 2026-11-03 (Phase 1).
 | Region | `francecentral` (allowed by the subscription's "Allowed resource deployment regions" policy, together with italynorth, swedencentral, polandcentral, switzerlandnorth) | 2026-11-03 |
 | Entra ID licence | None (`subscribedSkus` empty). Identity tier: written, not deployable. | 2026-11-03 |
 | Out of bounds | `fenrir-lab-prod-rg`: Fenrir lab, manual purple-team run only. Huginn and its CI never read, write or delete it. | 2026-11-03 |
+| vCPU quota, francecentral | **6 of 6 used** by three deallocated 2-vCPU VMs (`ctf-web-host`, `fenrir-lab-runner-vm`, `fenrir-lab-prod-vm`). Deallocated VMs still count. Blocks the opt-in X-08 VM in this region. | 2026-11-03 |
+| Smallest VM size | `Standard_F1als_v7` (1 vCPU, 2 GB, NVMe, Gen2). B1ls and B1s are not offered in francecentral; B2ats_v2 is restricted for this subscription. | 2026-11-03 |
 | Tools | Terraform 1.15.6, Azure CLI 2.91.0 + `log-analytics` 1.0.0b3, Python 3.14.4, gh 2.46.0, tflint 0.65.0, checkov 3.4.3 | 2026-11-03 |
 
 ## Phases
@@ -22,7 +24,7 @@ Last updated: 2026-11-03 (Phase 1).
 |---|---|---|
 | 0. Plan and prerequisites | done | 2026-11-03 |
 | 1. Repo layout | done (local only) | 2026-11-03 |
-| 2. Infrastructure | not started | |
+| 2. Infrastructure | written; fmt, validate, tflint, checkov clean. **bootstrap applied** (20 resources). sentinel and lab planned (18 and 5 to add), awaiting approval. | 2026-11-03 |
 | 3. Lab evidence | not started | |
 | 4. Detections | drafts copied into rule folders, none validated | |
 | 5. Testing | static tests only (`make test`) | |
@@ -62,14 +64,33 @@ Last updated: 2026-11-03 (Phase 1).
 | 9 | Does `_GetWatchlist('HuginnTrustedAutomation')` keep the custom columns, and does the function still compile if the watchlist is empty? | `HuginnActivity` | open | |
 | 10 | Does `listCallbackUrl` from the azurerm provider (Terraform refresh of the lab Logic App) show up as the deployment principal, so the watchlist must cover it? | `logicapp-callback-listed` | open | |
 
+## Infrastructure facts checked on 2026-11-03 (provider schema and source, azurerm v5.12.0)
+
+| Item | Finding |
+|---|---|
+| Severity override | `alert_details_override { severity_column_name = "Severity" }` exists in azurerm 5.12.0 |
+| Incident settings | Block is `incident { create_incident_enabled, grouping {} }` |
+| Techniques | Not validated by the provider. The Sentinel API takes parent techniques, so Terraform sends `T1550` for `T1550.001`. |
+| Frequency and period | Provider and Microsoft Learn: both 5 minutes to 14 days, frequency at most the period. No other coupling, so `PT5M` with `P14D` is allowed. |
+| Ingestion delay | Sentinel runs scheduled rules 5 minutes after their scheduled time. Microsoft's documented fix for duplicates is an `ingestion_time()` filter. |
+| Saved function | `azurerm_log_analytics_saved_search` with `function_alias` and `function_parameters = ["Ops:dynamic", "Lookback:timespan"]` |
+
 ## Corrections and changes to the review drafts
 
 | Date | Item | Change | Why |
 |---|---|---|---|
 | 2026-11-03 | `fenrir-chain` | Removed the `SigninLogs` device code boost from the core rule. The snippet is kept in the rule README for when P1/P2 exists. | Without the Entra connector the `SigninLogs` table does not exist, and a scheduled rule that references a missing table fails to deploy. |
 | 2026-11-03 | `mi-control-plane-new-ip`, `graph-directory-recon` | Added a constant `Severity` column. | The drafts had none, and every rule maps alert severity from that column. |
+| 2026-11-03 | Plan: lab attacker principal | Moved from `infra/lab` to `infra/bootstrap`. | Creating apps and role assignments needs Graph and User Access Administrator rights. Keeping them in the person-run bootstrap means CI never holds those rights (ADR 0003). |
+| 2026-11-03 | Plan: lab attacker federated credential | Subject is the GitHub environment `lab-replay`, not the main branch. | Only replay jobs can obtain the attacker token. |
+| 2026-11-03 | Plan: X-13 baseline trap | A new trigger name does not help: the rules key on the workflow, not the trigger. CI replays will create a fresh Logic App per run. | `logicapp-callback-listed` extracts the workflow ID. |
 
-## Open design questions (to settle in Phase 2 or 4)
+## Open design questions (to settle in Phase 3 or 4)
+
+- **Rule deployment is gated** by `deploy_rules` (default false). Rules are created only after
+  Activity log data has reached the workspace and Phase 3 has fixed the drafts.
+- **Lab storage with public network access disabled**: confirm at the first lab plan that the
+  azurerm provider can still refresh it (blob properties should go through ARM).
 
 - **Duplicate alerts.** Most drafts look at the last 1 hour but run every 5 minutes, so one event
   would raise up to 12 alerts. Options: filter recent events on `ingestion_time()` against the

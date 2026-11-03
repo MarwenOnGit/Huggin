@@ -21,7 +21,12 @@ help:
 	@echo "make evidence OP=<id>   Phase 3: capture AzureActivity rows for one operation"
 
 init:
-	$(TF) -chdir=infra/$(STACK) init
+	@if [ "$(STACK)" = bootstrap ]; then \
+	  $(TF) -chdir=infra/bootstrap init; \
+	else \
+	  test -f infra/shared/backend.hcl || (echo "apply infra/bootstrap first" >&2; exit 2); \
+	  $(TF) -chdir=infra/$(STACK) init -backend-config=../shared/backend.hcl -backend-config=key=$(STACK).tfstate; \
+	fi
 
 plan:
 	$(TF) -chdir=infra/$(STACK) plan -out=tfplan
@@ -32,6 +37,8 @@ apply:
 destroy:
 	$(TF) -chdir=infra/lab destroy
 	$(TF) -chdir=infra/sentinel destroy
+	@echo "infra/bootstrap is kept (state storage + identities, ~0 cost). To remove it too:"
+	@echo "  terraform -chdir=infra/bootstrap destroy"
 
 fmt:
 	$(TF) fmt -check -recursive infra
@@ -48,7 +55,7 @@ tflint:
 	tflint --recursive --config "$(CURDIR)/.tflint.hcl"
 
 checkov:
-	checkov -d infra --framework terraform --quiet --compact
+	checkov -d infra --framework terraform --quiet --compact --config-file .checkov.yaml
 
 lint: fmt validate tflint checkov
 
