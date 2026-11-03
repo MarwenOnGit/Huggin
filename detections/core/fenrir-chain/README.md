@@ -42,4 +42,6 @@ let DeviceCode = SigninLogs
 
 | Date | Run | Result | Time to alert | Evidence |
 |---|---|---|---|---|
-| | | not yet run | | |
+| 2026-11-03 | replay 41720948678 | fired, but 3 alerts (pre-fix duplicate defect) | 7 min 24 s | incidents 4, 7 and later |
+| 2026-11-03 | evidence 41724390758 | fired | 5 min 5 s | incident 8 |
+| 2026-11-03 | replay 41728291675 | fired, 2 alerts (two windows with new requests) | 11 min 39 s | incidents 14, 16 |

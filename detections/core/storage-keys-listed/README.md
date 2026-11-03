@@ -35,4 +35,5 @@ See [rule.kql](rule.kql). Source: the draft in [RULE-PROPOSALS.md](../../../docs
 
 | Date | Run | Result | Time to alert | Evidence |
 |---|---|---|---|---|
-| | | not yet run | | |
+| 2026-11-03 | replay 41720948678 | fired, but 2 alerts per event (pre-fix duplicate defect) | 10 min 35 s | incident 5 and later |
+| 2026-11-03 | replay 41728291675 | fired, 1 alert (post-fix), branch C | 16 min 46 s | incident 17 |

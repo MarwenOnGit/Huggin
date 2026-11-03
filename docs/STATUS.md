@@ -150,9 +150,13 @@ setting, and always check the workspace, not only the raw Activity log.
   only sees rows ingested by `now()`. A read-only simulation pinned to the real window ends
   reproduced the deployed rules' real alerts exactly, then gave 1 alert per event for rules 1, 2
   and `vm-runcommand-by-user`, and 1 alert per window with new requests for `fenrir-chain`.
-- **Status of rules 1 to 3:** they fired on a real replay, but with duplicates, so they are **not
-  yet marked validated**. Validation needs a green replay after the fix, plus the back-to-back
-  baseline-trap run.
+- **Post-fix replay 1 (baseline-trap run 1 of 2):** `replay.yml` run 41728291675 (22:09:33 UTC,
+  commit `a62758a`): drift OK, replays OK (2 min 14 s incl. VM), cleanup 0 left, all 4 rules fired.
+  Alerts per rule for the run: `logicapp-callback-listed` 1 (16 min 46 s), `storage-keys-listed` 1
+  (16 min 46 s), `vm-runcommand-by-user` 1 (11 min 45 s), `fenrir-chain` 2 (11 min 39 s; windows
+  22:17 and 22:22, two windows with new requests, the documented behaviour). Incidents 14 to 18.
+- **Status of the 4 rules:** green after the fix, one alert per event (chain: per window). **Not yet
+  marked validated**: waiting for run 2 of the back-to-back baseline-trap test.
 
 ## Draft rules run ad hoc on real rows (2026-11-03, read-only, not deployed)
 
