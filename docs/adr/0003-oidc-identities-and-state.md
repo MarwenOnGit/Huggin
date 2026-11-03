@@ -5,12 +5,12 @@ Date: 2026-11-03. Status: accepted.
 ## Decision
 
 1. **No secrets anywhere.** GitHub Actions signs in with OIDC federated credentials. No client
-   secret or certificate is created for any Huginn app.
+   secret or certificate is created for any Huggin app.
 2. **Two identities, split by purpose.**
 
    | Identity | Federated subjects | Azure roles | Watchlist |
    |---|---|---|---|
-   | `huginn-github-deploy` | `repo:MarwenOnGit@183097322/Huggin@1444286931:ref:refs/heads/main` | Contributor on `huginn-sentinel-rg` and `huginn-lab-rg`; Monitoring Contributor on the subscription (Activity log diagnostic setting); Storage Blob Data Contributor on the state container | Yes, for Terraform refresh operations on Huginn resource groups only |
+   | `huginn-github-deploy` | `repo:MarwenOnGit@183097322/Huggin@1444286931:ref:refs/heads/main` | Contributor on `huginn-sentinel-rg` and `huginn-lab-rg`; Monitoring Contributor on the subscription (Activity log diagnostic setting); Storage Blob Data Contributor on the state container | Yes, for Terraform refresh operations on Huggin resource groups only |
    | `huginn-lab-attacker` | `repo:MarwenOnGit@183097322/Huggin@1444286931:environment:lab-replay` | Contributor on `huginn-lab-rg` only | **Never** |
 
    The attacker's subject is a GitHub **environment**, not a branch. Only jobs that declare

@@ -4,7 +4,7 @@ Date: 2026-11-03. Status: accepted.
 
 ## Context
 
-Huginn deploys Azure resources (workspace, Sentinel, lab targets) and Entra ID objects (two app
+Huggin deploys Azure resources (workspace, Sentinel, lab targets) and Entra ID objects (two app
 registrations with federated credentials). It also needs a loop over rule folders.
 
 ## Decision

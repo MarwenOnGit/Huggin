@@ -61,7 +61,7 @@ Rules run every 5 minutes, but `AzureActivity` rows arrive 3 to 4.5 minutes afte
 (lab evidence, 2026-11-03). A query filtered only on `TimeGenerated` over the last hour would
 either miss late rows (short window) or alert up to 12 times on the same row (long window).
 
-Huginn's rules select "new" rows with `ingestion_time() > ago(Frequency) and ingestion_time() <= now()`,
+Huggin's rules select "new" rows with `ingestion_time() > ago(Frequency) and ingestion_time() <= now()`,
 where `Frequency` equals the rule frequency. Baselines use the rows ingested before the current
 interval. The static test checks that the KQL `Frequency` matches `rule.yaml`.
 
@@ -91,7 +91,7 @@ The Sentinel API rejects a scheduled rule whose query period is 2 days or more u
 most once an hour (found by a failed apply on 2026-11-03; the provider does not check it, and the
 documentation page read earlier did not mention it). `tests/test_rules_static.py` now enforces it.
 
-For the two "new pair" demo rules Huginn chose speed: frequency `PT5M`, lookback `PT47H`,
+For the two "new pair" demo rules Huggin chose speed: frequency `PT5M`, lookback `PT47H`,
 KQL `Baseline = 47h`. The cost is a shorter memory: a caller who touches the same resource every
 3 or more days is "new" each time. Rules that are not time-critical (`acr-admin-creds-listed`,
 `mi-control-plane-new-ip`) keep 14 days and run hourly. A long baseline at 5-minute speed is on

@@ -19,7 +19,7 @@ Check Azure Cost Management one week after the first apply and replace them with
 
 **Worst case** if something floods the workspace: the 0.5 GB/day cap stops billable ingestion.
 At roughly 2 to 6 USD per GB (Log Analytics plus Sentinel, after the trial), that is a ceiling of
-about 1 to 3 USD per day. Huginn has no source that should come close.
+about 1 to 3 USD per day. Huggin has no source that should come close.
 
 ## Per replay run (opt-in, created and deleted in the same run)
 
@@ -47,8 +47,8 @@ make destroy          # destroys infra/lab, then infra/sentinel (asks before eac
 app registrations cost nothing. To remove everything, remove `prevent_destroy` from the state
 account and container, then run `terraform -chdir=infra/bootstrap destroy`.
 
-## Not Huginn's cost
+## Not Huggin's cost
 
-Other resource groups in the subscription hold VMs that are not Huginn's. A deallocated VM costs
+Other resource groups in the subscription hold VMs that are not Huggin's. A deallocated VM costs
 nothing for compute, but its disks are still billed, and its vCPUs still count against the
 regional quota.

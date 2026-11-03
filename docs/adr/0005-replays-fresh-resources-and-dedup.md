@@ -4,7 +4,7 @@ Date: 2026-11-03. Status: accepted.
 
 ## Context
 
-Huginn must prove in CI that each core rule fires on the action Fenrir performs. Running Fenrir
+Huggin must prove in CI that each core rule fires on the action Fenrir performs. Running Fenrir
 itself in CI would mean stealing managed-identity tokens on a schedule. Several rules alert only
 on a new (caller, resource) pair over 14 days. Scheduled rules run every 5 minutes while
 `AzureActivity` arrives 3 to 4.5 minutes late.

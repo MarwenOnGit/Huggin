@@ -1,9 +1,9 @@
-# Huginn status
+# Huggin status
 
 This file is the single source of truth for what works. A rule is "validated" only after a lab
 run produced the expected alert, with a date and evidence. Everything else is a draft.
 
-Last updated: 2026-11-03 23:20 UTC (Phase 4: four core rules validated).
+Last updated: 2026-11-04 (Phase 6 docs).
 
 ## Environment
 
@@ -13,7 +13,7 @@ Last updated: 2026-11-03 23:20 UTC (Phase 4: four core rules validated).
 | Subscription | `42146134-9464-4c2d-86b0-afe414704284` (Azure for Students) | 2026-11-03 |
 | Region | `francecentral` (allowed by the subscription's "Allowed resource deployment regions" policy, together with italynorth, swedencentral, polandcentral, switzerlandnorth) | 2026-11-03 |
 | Entra ID licence | None (`subscribedSkus` empty). Identity tier: written, not deployable. | 2026-11-03 |
-| Out of bounds | `fenrir-lab-prod-rg`: Fenrir lab, manual purple-team run only. Huginn and its CI never read, write or delete it. | 2026-11-03 |
+| Out of bounds | `fenrir-lab-prod-rg`: Fenrir lab, manual purple-team run only. Huggin and its CI never read, write or delete it. | 2026-11-03 |
 | vCPU quota, francecentral | Was 6 of 6 (three deallocated 2-vCPU VMs). After the operator deleted two VMs: **2 of 6** regional; Basv2 family 0 of 10. Deallocated VMs still count. | 2026-11-03 |
 | Smallest VM size | **`Standard_B2ats_v2`** (2 vCPU, 1 GB, x64, Gen2, Basv2 family). Correction: the Phase 2 check dropped every size with any restriction, but B-series v2 restrictions are **zone-only** (zones 2, 3), so a non-zonal VM is allowed. `Standard_F1als_v7` cannot be used: its family quota is 0 of 0, like every 1-vCPU size left in the region. B1ls and B1s are not offered in francecentral. | 2026-11-03 |
 | Tools | Terraform 1.15.6, Azure CLI 2.91.0 + `log-analytics` 1.0.0b3, Python 3.14.4, gh 2.46.0, tflint 0.65.0, checkov 3.4.3 | 2026-11-03 |
@@ -27,8 +27,8 @@ Last updated: 2026-11-03 23:20 UTC (Phase 4: four core rules validated).
 | 2. Infrastructure | **Applied**: bootstrap (20), sentinel (18, no rules: `deploy_rules = false`), lab always-on (5). Second plan of sentinel and lab: no changes. | 2026-11-03 |
 | 3. Lab evidence | X-13 and P-12 captured as the lab attacker (`lab-evidence/`). Items 1, 3, 5, 8, 10 answered; 2 answered except managed identity. OIDC subject fix applied. Export gap resolved for new events. Still to do: X-08, X-10, X-14, P-13 (opt-in resources), item 4, item 6, item 7. | 2026-11-03 |
 | 4. Detections | Demo set (`logicapp-callback-listed`, `storage-keys-listed`, `fenrir-chain` multi-stage) rewritten with ingestion-time dedup, tested ad hoc on real rows (fire with a wide window, silent with the real 5-minute window). Sentinel apply 2026-11-03 **partly failed**: function replaced, 6 operator watchlist rows created, `fenrir-chain` created and enabled (PT5M/PT4H). `logicapp-callback-listed` and `storage-keys-listed` rejected (PT5M with P14D not allowed). **Decision (option A):** PT5M with PT47H and `Baseline = 47h`; re-tested ad hoc on real rows (fire with a wide window, silent at 5 minutes; storage rule no longer flags the operator, so the operator watchlist rows work). 2 rules applied 2026-11-03: all 3 demo rules **enabled** in Sentinel (PT5M; P1DT23H, P1DT23H, PT4H). First replay run (21:17Z) used `main` with `PT47H`, so its drift check is expected to fail until the `P1DT23H` fix is pushed. Opt-in batch (X-08, X-10, X-14, P-13) postponed until after 11 November. | 2026-11-03 |
-| 5. Testing | `ci.yml` written (static tests, KQL syntax via Kusto.Language, fmt/validate, tflint, checkov; no Azure); **first CI run pending** (KQL parser and shellcheck not run locally). `replay.yml` green twice back to back (41728291675, 41734608159): baseline-trap test passed. Static tests enforce frequency/lookback, duration format, dedup window, entity columns and validated-status evidence. Nightly runs at 02:30 UTC. | 2026-11-03 |
-| 6. Documentation | not started | |
+| 5. Testing | `ci.yml` **green** on its first run (41738746348, commit `e598ae1`): static tests 74 passed, KQL parser 15/15 files, shellcheck clean, fmt/validate, tflint, checkov 0 failed in both passes. Not yet shown: that the KQL job fails on a broken query (do it with the demo break). `replay.yml` green twice back to back (41728291675, 41734608159): baseline-trap test passed. Static tests enforce frequency/lookback, duration format, dedup window, entity columns and validated-status evidence. Nightly runs at 02:30 UTC. | 2026-11-03 |
+| 6. Documentation | README rewritten (pitch, diagram, tiers with status, test loops, quick start, cost, teardown, blind spots, naming, roadmap); ARCHITECTURE.md (Mermaid data flow and test loop, licence split, trust boundaries, stacks); DEMO.md (5-minute script, short answers); PURPLE-TEAM.md (operator checklist); ADRs 0006, 0007 and an ADR index; blind-spots section in FENRIR-MAPPING. | 2026-11-04 |
 
 ## Rules
 
@@ -54,7 +54,7 @@ Last updated: 2026-11-03 23:20 UTC (Phase 4: four core rules validated).
 | # | Question | Rules that depend on it | Answer | Evidence |
 |---|---|---|---|---|
 | 1 | Exact `ActivityStatusValue` strings (`Start`/`Success`/`Failure` or `Started`/`Succeeded`/`Failed`) | all core | **Answered (workspace, 2026-11-03):** `ActivityStatusValue` is `Start`, `Success`, `Failure`. `ActivitySubstatusValue` is `OK` on success, `NotFound` on the failed X-13 probe. (The raw Activity log API shows `Started`/`Succeeded`/`Failed` instead.) The drafts accept both forms, so no change needed. | `lab-evidence/X-13.json`, `lab-evidence/P-12.json` (run 2026-11-03T20:44Z) |
-| 2 | Does `Claims_d` keep `idtyp`, `appid`, `xms_mirid` and the object ID claim? | `HuginnActivity`, all core, `mi-control-plane-new-ip` | **Answered for service principals (workspace):** `Claims_d` keeps `idtyp` (`app`), `appid` (client ID) and the object ID under `http://schemas.microsoft.com/identity/claims/objectidentifier`. For users (raw API): `idtyp`, `appid`, `objectidentifier` present. `xms_mirid`: absent for both, as expected. **Managed identity: open**, moved to the manual purple-team run (Huginn CI must not replay MI tokens). | `lab-evidence/X-13.json`, `lab-evidence/P-12.json` (run 2026-11-03T20:44Z) |
+| 2 | Does `Claims_d` keep `idtyp`, `appid`, `xms_mirid` and the object ID claim? | `HuginnActivity`, all core, `mi-control-plane-new-ip` | **Answered for service principals (workspace):** `Claims_d` keeps `idtyp` (`app`), `appid` (client ID) and the object ID under `http://schemas.microsoft.com/identity/claims/objectidentifier`. For users (raw API): `idtyp`, `appid`, `objectidentifier` present. `xms_mirid`: absent for both, as expected. **Managed identity: open**, moved to the manual purple-team run (Huggin CI must not replay MI tokens). | `lab-evidence/X-13.json`, `lab-evidence/P-12.json` (run 2026-11-03T20:44Z) |
 | 3 | Is `Caller` the object ID or the app ID for service principals and managed identities? | all core | **Answered (workspace):** for a service principal, `Caller` is the **service principal object ID** (`380b1f3c-...`), not the app ID (`a9d1d6db-...`, which is in `Claims_d.appid`). For a user, `Caller` is the UPN. Managed identity: open (purple-team run). | `lab-evidence/X-13.json`, `lab-evidence/P-12.json` (run 2026-11-03T20:44Z) |
 | 4 | Do X-10 rows keep `/config/publishingcredentials` in `_ResourceId` or `Properties_d.entity`? | `appservice-publish-creds` | open | |
 | 5 | Is X-13's `_ResourceId` the trigger or the workflow? | `logicapp-callback-listed` | **Answered (workspace):** `_ResourceId` and `Properties_d.entity` are the **trigger** (`.../workflows/logic-huginn-lab/triggers/manual`). The draft's `extract("^(.*/workflows/[^/]+)")` returns the workflow, as intended. | `lab-evidence/X-13.json`, `lab-evidence/P-12.json` (run 2026-11-03T20:44Z) |
@@ -101,6 +101,7 @@ Last updated: 2026-11-03 23:20 UTC (Phase 4: four core rules validated).
 | 2026-11-03 | Facts table: frequency and period | Corrected: PT5M with P14D is rejected by the Sentinel API (period >= 2 days needs frequency >= 1 hour). | Found by a failed apply. Earlier entry was a documentation reading, not a test. |
 | 2026-11-03 | `logicapp-callback-listed`, `storage-keys-listed` | Lookback P14D to PT47H, KQL `Baseline = 47h`, frequency stays PT5M. | Sentinel API rule (period >= 2 days needs frequency >= 1 hour). Option A, ADR 0005. Option C on the roadmap. |
 | 2026-11-03 | X-08 lab VM | No longer a Terraform opt-in resource. Terraform keeps only a free VNet, subnet and deny-all-inbound NSG; each evidence or replay run creates a fresh `Standard_B2ats_v2` VM (no public IP, no identity, throwaway SSH key deleted before the VM exists, OS disk and NIC deleted with it), runs `hostname`, and deletes it through a trap, with `cleanup.sh` as a safety net. | The VM must never outlive a run, running or deallocated (quota). A per-run VM also gives a fresh (caller, VM) pair. |
+| 2026-11-04 | Project name | "Huginn" renamed to **Huggin** in all Markdown (29 occurrences, 16 files, including the four review docs). Deployed identifiers keep the old spelling: `HuginnActivity`, `HuginnTrustedAutomation`, `huginn-*` resource groups and apps, rule titles "Huginn - ...". | Operator's correction; renaming deployed names needs Azure changes. |
 | 2026-11-03 | Deduplication in all four Phase 4 rules | Upper bound `<= now()` on "new"; per-request (`CorrelationId`) counting in `vm-runcommand-by-user` and `fenrir-chain`. | Duplicate alerts on the first green replay; see "First alerts and the duplicate-alert defect". |
 | 2026-11-03 | `vm-runcommand-by-user` | Rewritten from X-08 evidence: dedup per request, Medium (not Low) for unknown service principals, entities, alert title; added to `enabled_rules`; `replay.sh` with a fresh VM per run. | Lab evidence X-08. |
 | 2026-11-03 | `evidence.yml` | `ops` input has no default. | Run 41724390758 meant to do X-08 but ran the default ops. |
@@ -117,7 +118,7 @@ Last updated: 2026-11-03 23:20 UTC (Phase 4: four core rules validated).
 ## Incident: AzureActivity export gap (resolved for new events, 2026-11-03)
 
 The subscription diagnostic setting `huginn-activity-to-law` exists with Administrative, Security,
-Policy and Alert enabled. The raw Activity log shows about 40 Huginn events between 15:30 and
+Policy and Alert enabled. The raw Activity log shows about 40 Huggin events between 15:30 and
 15:42 UTC, but by 20:14 UTC the workspace held only 2 rows (both at 15:30:36, the Sentinel
 solution write). No cap was hit (`Usage`: AzureActivity 0.016 MB, non-billable) and `_LogOperation`
 is empty. There were no subscription events after 15:42, so whether the export works now is

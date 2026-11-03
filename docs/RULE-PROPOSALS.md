@@ -1,4 +1,4 @@
-# Huginn rule proposals
+# Huggin rule proposals
 
 **Every query in this file is a draft, not yet validated.** Each one must pass a benign replay in
 the lab before it is deployed. Field names, status strings and request-body shapes marked

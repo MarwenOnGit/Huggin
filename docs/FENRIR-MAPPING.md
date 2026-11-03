@@ -1,15 +1,15 @@
-# Fenrir to Huginn coverage matrix
+# Fenrir to Huggin coverage matrix
 
 Operation IDs come from [FENRIR-OPERATIONS.md](FENRIR-OPERATIONS.md). Rules are described in
 [RULE-PROPOSALS.md](RULE-PROPOSALS.md). Rules marked *(new)* are proposed in this review and
-are not in the original Huginn list.
+are not in the original Huggin list.
 
 "Blind spot" = yes means no Sentinel table records the operation in a default setup.
 "Validated" stays "no" until each rule has passed a benign replay in the lab. "Yes" cites the replay runs.
 
 ## Matrix
 
-| Command | Op ID | Operation | Log source | Huginn rule | Blind spot | Validated |
+| Command | Op ID | Operation | Log source | Huggin rule | Blind spot | Validated |
 |---|---|---|---|---|---|---|
 | login | A-02 | Device code sign-in, Azure CLI client ID | `SigninLogs` | `devicecode-azure-mgmt-signin` *(new)*, context for `fenrir-chain` | no | no |
 | login | A-04 | ROPC sign-in (`--auth-flow ropc`) | `SigninLogs` | `devicecode-azure-mgmt-signin` *(new)* (ROPC branch) | no | no |
@@ -37,13 +37,25 @@ are not in the original Huginn list.
 | post-exploit | D-01, D-02 | Blob / file listing and download with an account key or OAuth | `StorageBlobLogs`, `StorageFileLogs` (diagnostic settings) | out of scope for this review (candidate follow-up) | yes, unless storage diagnostics are on | no |
 | post-exploit | D-03 | ACR token exchange, catalog, image pull | `ContainerRegistryLoginEvents`, `ContainerRegistryRepositoryEvents` | out of scope for this review (candidate follow-up) | yes, unless registry diagnostics are on | no |
 
+## Blind spots
+
+No rule can close these with the data Huggin collects. They are part of the design, not gaps to hide.
+
+| What | Fenrir ops | Why it is invisible | What would help |
+|---|---|---|---|
+| ARM reads | E-08 to E-27, X-01 to X-05, X-07, X-09, X-12, X-19 to X-21, P-01 to P-11 | `AzureActivity` records writes and actions, never GETs. `enumerate` alone, and `post-exploit` without dump flags, leave no row. | Nothing in Sentinel today; hunting on the actions that follow |
+| Automation Account path | X-15 to X-18 | Reading runbook source, variables and credential names are GETs | Nothing in `AzureActivity`; restrict who can read runbooks |
+| Graph reconnaissance | E-01 to E-07, X-06 | Needs `MicrosoftGraphActivityLogs` (Entra ID P1/P2 and a diagnostic setting); this tenant has no P1/P2 | `graph-directory-recon` once licensed |
+| What runs on a host | after X-08, X-11, X-14 | Control-plane logs show that a command ran, not what it did; the Run Command text is not logged (lab evidence X-08) | Host telemetry (Defender for Servers, AMA), Defender XDR |
+| Data-plane access | D-01 to D-03 | Blob, file and registry access need per-resource diagnostic settings | `StorageBlobLogs`, `ContainerRegistry*` rules (roadmap) |
+
 ## Rules that Fenrir does not trigger
 
 These rules are still worth building, because they cover the next step an operator would take
 after Fenrir reports an opportunity. Fenrir will not produce a true positive for them, so each
 needs its own lab replay.
 
-| Huginn rule | Why Fenrir does not trigger it | Where Fenrir points at it |
+| Huggin rule | Why Fenrir does not trigger it | Where Fenrir points at it |
 |---|---|---|
 | `rbac-self-assignment` | No PUT to `roleAssignments` anywhere in the code | `core/enumerate/verdict.py`: `ROLE_ASSIGNMENT_WRITE_ROLES` is reported as an opportunity |
 | `uai-attached-to-host` | No PUT/PATCH to any compute resource | `core/enumerate/verdict.py`: `UAI_ASSIGN_ROLES` is reported as an opportunity |
