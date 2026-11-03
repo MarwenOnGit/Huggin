@@ -25,7 +25,7 @@ Last updated: 2026-11-03 (Phase 2 applied).
 | 0. Plan and prerequisites | done | 2026-11-03 |
 | 1. Repo layout | done (local only) | 2026-11-03 |
 | 2. Infrastructure | **Applied**: bootstrap (20), sentinel (18, no rules: `deploy_rules = false`), lab always-on (5). Second plan of sentinel and lab: no changes. | 2026-11-03 |
-| 3. Lab evidence | not started | |
+| 3. Lab evidence | started. Blocked on (a) the AzureActivity export gap and (b) the GitHub `lab-replay` environment and variables, which the API does not show yet. | 2026-11-03 |
 | 4. Detections | drafts copied into rule folders, none validated | |
 | 5. Testing | static tests only (`make test`) | |
 | 6. Documentation | not started | |
@@ -54,15 +54,15 @@ Last updated: 2026-11-03 (Phase 2 applied).
 | # | Question | Rules that depend on it | Answer | Evidence |
 |---|---|---|---|---|
 | 1 | Exact `ActivityStatusValue` strings (`Start`/`Success`/`Failure` or `Started`/`Succeeded`/`Failed`) | all core | partial: `Start` and `Success` seen on 2026-11-03 for a non-Fenrir write. Still to confirm for the six Fenrir actions and a failure. | |
-| 2 | Does `Claims_d` keep `idtyp`, `appid`, `xms_mirid` and the object ID claim? | `HuginnActivity`, all core, `mi-control-plane-new-ip` | open | |
-| 3 | Is `Caller` the object ID or the app ID for service principals and managed identities? | all core | open | |
+| 2 | Does `Claims_d` keep `idtyp`, `appid`, `xms_mirid` and the object ID claim? | `HuginnActivity`, all core, `mi-control-plane-new-ip` | preliminary (user caller, raw API): `idtyp`, `appid` and `objectidentifier` are present; `xms_mirid` absent as expected for a user. Service principal: needs the evidence workflow. Managed identity: needs a managed-identity caller, which Huginn CI must not create (no MI token replays), so it moves to the manual purple-team run. | |
+| 3 | Is `Caller` the object ID or the app ID for service principals and managed identities? | all core | open. For users, `Caller` is the UPN (raw API, 2026-11-03). | |
 | 4 | Do X-10 rows keep `/config/publishingcredentials` in `_ResourceId` or `Properties_d.entity`? | `appservice-publish-creds` | open | |
-| 5 | Is X-13's `_ResourceId` the trigger or the workflow? | `logicapp-callback-listed` | open | |
+| 5 | Is X-13's `_ResourceId` the trigger or the workflow? | `logicapp-callback-listed` | preliminary: **the trigger** (`.../workflows/<name>/triggers/manual`), seen in the raw Activity log API for a user caller on 2026-11-03. The draft already extracts the workflow. To confirm on workspace rows. | |
 | 6 | Is `Properties_d.requestbody` populated for role assignment and VM writes? | `rbac-self-assignment`, `uai-attached-to-host` | open | |
 | 7 | Are X-08, X-14 and P-13 recorded as expected, and how many rows per call? | `vm-runcommand-by-user`, `aci-exec`, `acr-admin-creds-listed` | open | |
 | 8 | Ingestion delay from action to `AzureActivity` row (sets the alert timeout in `validate_alert.py`) | CI loop | open | |
 | 9 | Does `_GetWatchlist('HuginnTrustedAutomation')` keep the custom columns, and does the function still compile if the watchlist is empty? | `HuginnActivity` | partial: custom columns are kept and the function compiles with the watchlist populated (2026-11-03). The empty case is untested; Terraform always adds the deploy principal rows, so it does not arise. | |
-| 10 | Does `listCallbackUrl` from the azurerm provider (Terraform refresh of the lab Logic App) show up as the deployment principal, so the watchlist must cover it? | `logicapp-callback-listed` | open | |
+| 10 | Does `listCallbackUrl` from the azurerm provider (Terraform refresh of the lab Logic App) show up as the deployment principal, so the watchlist must cover it? | `logicapp-callback-listed` | yes for the caller running Terraform: each lab apply and refresh as the user produced `listCallbackUrl` and `listKeys` (even with shared keys disabled) on 2026-11-03 (raw API). In CI that caller is the deploy principal, which the watchlist covers. | |
 
 ## Deployed (2026-11-03)
 
@@ -98,6 +98,16 @@ Last updated: 2026-11-03 (Phase 2 applied).
 | 2026-11-03 | Plan: lab attacker principal | Moved from `infra/lab` to `infra/bootstrap`. | Creating apps and role assignments needs Graph and User Access Administrator rights. Keeping them in the person-run bootstrap means CI never holds those rights (ADR 0003). |
 | 2026-11-03 | Plan: lab attacker federated credential | Subject is the GitHub environment `lab-replay`, not the main branch. | Only replay jobs can obtain the attacker token. |
 | 2026-11-03 | Plan: X-13 baseline trap | A new trigger name does not help: the rules key on the workflow, not the trigger. CI replays will create a fresh Logic App per run. | `logicapp-callback-listed` extracts the workflow ID. |
+
+## Incident: AzureActivity export gap (open, 2026-11-03)
+
+The subscription diagnostic setting `huginn-activity-to-law` exists with Administrative, Security,
+Policy and Alert enabled. The raw Activity log shows about 40 Huginn events between 15:30 and
+15:42 UTC, but by 20:14 UTC the workspace held only 2 rows (both at 15:30:36, the Sentinel
+solution write). No cap was hit (`Usage`: AzureActivity 0.016 MB, non-billable) and `_LogOperation`
+is empty. There were no subscription events after 15:42, so whether the export works now is
+unknown. Suspects, not yet tested: a slow start of a new subscription diagnostic setting, or
+`local_authentication_enabled = false` on the workspace (no documentation found either way).
 
 ## Open design questions (to settle in Phase 3 or 4)
 

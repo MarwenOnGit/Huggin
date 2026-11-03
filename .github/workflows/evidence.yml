@@ -1,0 +1,64 @@
+# Phase 3: perform benign Fenrir-shaped actions as the lab attacker, so their AzureActivity rows
+# can be captured (scripts/evidence/capture.py, run locally afterwards). Manual only.
+name: evidence
+
+on:
+  workflow_dispatch:
+    inputs:
+      ops:
+        description: "Comma-separated operations (allowed: X-13, X-13-fail, P-12)"
+        required: true
+        default: "X-13,X-13-fail,P-12"
+
+permissions: {}
+
+concurrency:
+  group: huginn-lab
+  cancel-in-progress: false
+
+jobs:
+  replay:
+    name: Benign actions as huginn-lab-attacker
+    runs-on: ubuntu-latest
+    environment: lab-replay # federated credential subject of the lab attacker
+    permissions:
+      id-token: write
+      contents: read
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Sign in as the lab attacker (OIDC)
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ vars.AZURE_ATTACKER_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Run benign actions
+        env:
+          OPS: ${{ inputs.ops }}
+        run: |
+          set -euo pipefail
+          echo "STARTED=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+          scripts/evidence/run.sh "$OPS" | tee run.log
+
+      - name: Job summary
+        if: always()
+        env:
+          OPS: ${{ inputs.ops }}
+        run: |
+          {
+            echo "### Evidence run"
+            echo "- Operations: \`$OPS\`"
+            echo "- Started (UTC): ${STARTED:-unknown}"
+            echo "- Finished (UTC): $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "- Caller: huginn-lab-attacker"
+            echo
+            echo '```'
+            cat run.log 2>/dev/null || true
+            echo '```'
+            echo "Capture rows locally: \`python3 scripts/evidence/capture.py --since <Started>\`"
+          } >> "$GITHUB_STEP_SUMMARY"
