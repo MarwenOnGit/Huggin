@@ -1,6 +1,6 @@
 # `vm-runcommand-by-user`
 
-**Status: draft, not yet validated.** Prepared for deployment in Phase 4 (2026-11-03). Tier: `core`. Validation: `ci`.
+**Status: validated on 2026-11-03** by two back-to-back benign replays (replay 41728291675 and 41734608159). Prepared for deployment in Phase 4 (2026-11-03). Tier: `core`. Validation: `ci`.
 
 Fenrir operations: X-08 (IDs from [FENRIR-OPERATIONS.md](../../../docs/FENRIR-OPERATIONS.md)).
 
@@ -34,3 +34,4 @@ See [rule.kql](rule.kql). Source: the draft in [RULE-PROPOSALS.md](../../../docs
 | Date | Run | Result | Time to alert | Evidence |
 |---|---|---|---|---|
 | 2026-11-03 | replay 41728291675 | fired, 1 alert | 11 min 45 s | incident 15 |
+| 2026-11-03 | replay 41734608159 (back-to-back run 2) | fired, 1 alert | 12 min 45 s | incident 20 |

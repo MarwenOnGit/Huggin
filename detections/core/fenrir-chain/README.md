@@ -1,6 +1,6 @@
 # `fenrir-chain`
 
-**Status: draft, not yet validated.** Deployed for validation in Phase 4 (2026-11-03). Tier: `core`. Validation: `ci`.
+**Status: validated on 2026-11-03** by two back-to-back benign replays (replay 41728291675 and 41734608159). Scope: multi-stage branch. The identity-pivot branch needs the manual purple-team run. Deployed for validation in Phase 4 (2026-11-03). Tier: `core`. Validation: `ci`.
 
 Fenrir operations: X-08, X-10, X-13, X-14, P-12, P-13 (IDs from [FENRIR-OPERATIONS.md](../../../docs/FENRIR-OPERATIONS.md)).
 
@@ -45,3 +45,4 @@ let DeviceCode = SigninLogs
 | 2026-11-03 | replay 41720948678 | fired, but 3 alerts (pre-fix duplicate defect) | 7 min 24 s | incidents 4, 7 and later |
 | 2026-11-03 | evidence 41724390758 | fired | 5 min 5 s | incident 8 |
 | 2026-11-03 | replay 41728291675 | fired, 2 alerts (two windows with new requests) | 11 min 39 s | incidents 14, 16 |
+| 2026-11-03 | replay 41734608159 (back-to-back run 2) | fired, 1 alert | 12 min 45 s | incident 22 |

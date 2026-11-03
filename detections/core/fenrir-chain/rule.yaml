@@ -3,7 +3,7 @@ name: "Huginn - Multi-stage host execution and secret extraction by one caller"
 tier: core
 fenrir_ops: [X-08, X-10, X-13, X-14, P-12, P-13]
 # status: draft | validated (validated only after a lab run proved it; see docs/STATUS.md)
-status: draft
+status: validated
 # validation: ci (benign replay in replay.yml) | manual (docs/PURPLE-TEAM.md or a manual replay)
 validation: ci
 # deployable: false = needs a licence or a table this tenant does not have

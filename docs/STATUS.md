@@ -3,7 +3,7 @@
 This file is the single source of truth for what works. A rule is "validated" only after a lab
 run produced the expected alert, with a date and evidence. Everything else is a draft.
 
-Last updated: 2026-11-03 (Phase 4, partial apply).
+Last updated: 2026-11-03 23:20 UTC (Phase 4: four core rules validated).
 
 ## Environment
 
@@ -27,17 +27,17 @@ Last updated: 2026-11-03 (Phase 4, partial apply).
 | 2. Infrastructure | **Applied**: bootstrap (20), sentinel (18, no rules: `deploy_rules = false`), lab always-on (5). Second plan of sentinel and lab: no changes. | 2026-11-03 |
 | 3. Lab evidence | X-13 and P-12 captured as the lab attacker (`lab-evidence/`). Items 1, 3, 5, 8, 10 answered; 2 answered except managed identity. OIDC subject fix applied. Export gap resolved for new events. Still to do: X-08, X-10, X-14, P-13 (opt-in resources), item 4, item 6, item 7. | 2026-11-03 |
 | 4. Detections | Demo set (`logicapp-callback-listed`, `storage-keys-listed`, `fenrir-chain` multi-stage) rewritten with ingestion-time dedup, tested ad hoc on real rows (fire with a wide window, silent with the real 5-minute window). Sentinel apply 2026-11-03 **partly failed**: function replaced, 6 operator watchlist rows created, `fenrir-chain` created and enabled (PT5M/PT4H). `logicapp-callback-listed` and `storage-keys-listed` rejected (PT5M with P14D not allowed). **Decision (option A):** PT5M with PT47H and `Baseline = 47h`; re-tested ad hoc on real rows (fire with a wide window, silent at 5 minutes; storage rule no longer flags the operator, so the operator watchlist rows work). 2 rules applied 2026-11-03: all 3 demo rules **enabled** in Sentinel (PT5M; P1DT23H, P1DT23H, PT4H). First replay run (21:17Z) used `main` with `PT47H`, so its drift check is expected to fail until the `P1DT23H` fix is pushed. Opt-in batch (X-08, X-10, X-14, P-13) postponed until after 11 November. | 2026-11-03 |
-| 5. Testing | static tests extended; `replay.yml` (drift check, replays on fresh resources, cleanup, alert validation) and `tests/validate_alert.py` written, **not run yet**. Baseline-trap test (two runs in a row) not done. | 2026-11-03 |
+| 5. Testing | `replay.yml` green twice back to back (41728291675, 41734608159): baseline-trap test passed. Static tests enforce frequency/lookback, duration format, dedup window, entity columns and validated-status evidence. Nightly runs at 02:30 UTC. | 2026-11-03 |
 | 6. Documentation | not started | |
 
 ## Rules
 
 | Rule | Tier | Fenrir ops | Deployable here | Validation | Status |
 |---|---|---|---|---|---|
-| `logicapp-callback-listed` | core | X-13 | yes | ci | draft, not yet validated |
-| `storage-keys-listed` | core | P-12 | yes | ci (B, C), manual (A) | draft, not yet validated |
-| `fenrir-chain` | core | X-08, X-10, X-13, X-14, P-12, P-13 | yes | ci (multi-stage), manual (identity pivot) | draft, not yet validated |
-| `vm-runcommand-by-user` | core | X-08 | yes | ci | draft, not yet validated |
+| `logicapp-callback-listed` | core | X-13 | yes | ci | **validated 2026-11-03** |
+| `storage-keys-listed` | core | P-12 | yes | ci (B, C), manual (A) | **validated 2026-11-03** (branch C) |
+| `fenrir-chain` | core | X-08, X-10, X-13, X-14, P-12, P-13 | yes | ci (multi-stage), manual (identity pivot) | **validated 2026-11-03** (multi-stage) |
+| `vm-runcommand-by-user` | core | X-08 | yes | ci | **validated 2026-11-03** |
 | `appservice-publish-creds` | core | X-10 | yes | ci | draft, not yet validated |
 | `aci-exec` | core | X-14 | yes | ci | draft, not yet validated |
 | `acr-admin-creds-listed` | core | P-13 | yes | ci | draft, not yet validated |
@@ -155,8 +155,16 @@ setting, and always check the workspace, not only the raw Activity log.
   Alerts per rule for the run: `logicapp-callback-listed` 1 (16 min 46 s), `storage-keys-listed` 1
   (16 min 46 s), `vm-runcommand-by-user` 1 (11 min 45 s), `fenrir-chain` 2 (11 min 39 s; windows
   22:17 and 22:22, two windows with new requests, the documented behaviour). Incidents 14 to 18.
-- **Status of the 4 rules:** green after the fix, one alert per event (chain: per window). **Not yet
-  marked validated**: waiting for run 2 of the back-to-back baseline-trap test.
+- **Post-fix replay 2 (baseline-trap run 2 of 2):** `replay.yml` run 41734608159 (22:53:09 UTC,
+  commit `2fb4431`), started right after run 1 with the same lab attacker: drift OK, replays OK
+  (2 min 18 s incl. VM), cleanup 0 left, 0 VMs in `huginn-lab-rg`. Exactly **1 alert per rule**
+  (re-counted at 23:16, after the next window): all four at about 12 min 45 s (one window,
+  23:02). Incidents 19 to 22. **Baseline-trap test passed**: fresh resources per run keep the
+  "new pair" rules firing for the same caller.
+- **Validated (2026-11-03):** `logicapp-callback-listed`, `storage-keys-listed` (branch C),
+  `fenrir-chain` (multi-stage branch), `vm-runcommand-by-user`. Evidence: replays 41728291675 and
+  41734608159, both green, one alert per event. Not covered: storage branches A and B,
+  `fenrir-chain` identity pivot (purple-team run).
 
 ## Draft rules run ad hoc on real rows (2026-11-03, read-only, not deployed)
 

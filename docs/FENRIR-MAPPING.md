@@ -5,7 +5,7 @@ Operation IDs come from [FENRIR-OPERATIONS.md](FENRIR-OPERATIONS.md). Rules are 
 are not in the original Huginn list.
 
 "Blind spot" = yes means no Sentinel table records the operation in a default setup.
-"Validated" stays "no" until each rule has passed a benign replay in the lab.
+"Validated" stays "no" until each rule has passed a benign replay in the lab. "Yes" cites the replay runs.
 
 ## Matrix
 
@@ -20,19 +20,19 @@ are not in the original Huginn list.
 | exploit | X-01 to X-04 | ARM discovery reads, including `GET /me` once per RG | none | none possible in Sentinel | **yes** | n/a |
 | exploit | X-06 | Graph `GET /servicePrincipals?$top=999` (whole tenant) | `MicrosoftGraphActivityLogs` | `graph-directory-recon` *(new)* | yes, if Graph activity logs are not enabled | no |
 | exploit | X-07 | RBAC permission preflight (`.../Microsoft.Authorization/permissions`) | none | none possible in Sentinel | **yes** | n/a |
-| exploit | X-08 | VM Run Command | `AzureActivity` | `vm-runcommand-by-user`, `fenrir-chain` | no | no |
+| exploit | X-08 | VM Run Command | `AzureActivity` | `vm-runcommand-by-user`, `fenrir-chain` | no | **yes**, 2026-11-03 (`vm-runcommand-by-user`; `fenrir-chain` multi-stage), replays 41728291675, 41734608159 |
 | exploit | X-08 (host side) | Identity token issued on the VM | `AADManagedIdentitySignInLogs` | `mi-signin-anomaly`, `fenrir-chain` | no | no |
 | exploit | X-09 | Run Command status polling | none | none | **yes** | n/a |
 | exploit | X-10 | App Service publishing credentials list | `AzureActivity` | `appservice-publish-creds`, `fenrir-chain` | no | no |
 | exploit | X-11 | Kudu `/api/command` with Basic auth | `AppServiceAuditLogs` / `AppServiceHTTPLogs` (verify in lab) | `appservice-publish-creds` (optional join) | yes, unless App Service diagnostic settings are on | no |
 | exploit | X-11 (host side) | Identity token issued on the App Service | `AADManagedIdentitySignInLogs` | `mi-signin-anomaly` | no | no |
 | exploit | X-12 | List Logic App triggers | none | none | **yes** | n/a |
-| exploit | X-13 | Logic App `listCallbackUrl` | `AzureActivity` | `logicapp-callback-listed`, `fenrir-chain` | no | no |
+| exploit | X-13 | Logic App `listCallbackUrl` | `AzureActivity` | `logicapp-callback-listed`, `fenrir-chain` | no | **yes**, 2026-11-03 (`logicapp-callback-listed`; `fenrir-chain` multi-stage), replays 41728291675, 41734608159 |
 | exploit | X-14 | Container Instances exec | `AzureActivity` | `aci-exec`, `fenrir-chain` | no (session content: yes) | no |
 | exploit | X-15 to X-18 | Automation: list runbooks, **read runbook source**, list variables, list credentials | none | none possible in Sentinel. `automation-runbook-run` does **not** fire, because Fenrir starts no job. | **yes** | n/a |
 | exploit | X-19 to X-21 | ARM reads **as the managed identity from the operator's IP** | none | none possible in Sentinel | **yes** | n/a |
 | post-exploit | P-01 to P-11 | ARM reads as the managed identity (subscriptions, RGs, resources, permissions, role assignments, storage accounts, registries) | none | none possible in Sentinel | **yes** | n/a |
-| post-exploit | P-12 | Storage `listKeys` as the managed identity (`--dump-blobs`, also with `--dry-run`) | `AzureActivity` | `storage-keys-listed`, `mi-control-plane-new-ip` *(new)*, `fenrir-chain` | no | no |
+| post-exploit | P-12 | Storage `listKeys` as the managed identity (`--dump-blobs`, also with `--dry-run`) | `AzureActivity` | `storage-keys-listed`, `mi-control-plane-new-ip` *(new)*, `fenrir-chain` | no | **partly**, 2026-11-03: `storage-keys-listed` branch C and `fenrir-chain` multi-stage, replays 41728291675, 41734608159. Branch A and `mi-control-plane-new-ip` (the managed-identity case Fenrir actually produces) need the purple-team run. |
 | post-exploit | P-13 | ACR `listCredentials` as the managed identity (`--dump-images`, also with `--dry-run`) | `AzureActivity` | `acr-admin-creds-listed` *(new)*, `mi-control-plane-new-ip` *(new)*, `fenrir-chain` | no | no |
 | post-exploit | D-01, D-02 | Blob / file listing and download with an account key or OAuth | `StorageBlobLogs`, `StorageFileLogs` (diagnostic settings) | out of scope for this review (candidate follow-up) | yes, unless storage diagnostics are on | no |
 | post-exploit | D-03 | ACR token exchange, catalog, image pull | `ContainerRegistryLoginEvents`, `ContainerRegistryRepositoryEvents` | out of scope for this review (candidate follow-up) | yes, unless registry diagnostics are on | no |
@@ -58,4 +58,4 @@ needs its own lab replay.
 | Operations visible in `AuditLogs` | 0 |
 | Operations visible only with `MicrosoftGraphActivityLogs` | 8 (E-01 to E-07, X-06) |
 | ARM reads with no Sentinel visibility | all the rest |
-| Rules validated | 0 |
+| Rules validated | 4 (2026-11-03): `logicapp-callback-listed`, `storage-keys-listed` (branch C), `fenrir-chain` (multi-stage), `vm-runcommand-by-user`. See [STATUS.md](STATUS.md). |

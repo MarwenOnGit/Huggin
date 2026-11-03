@@ -1,6 +1,6 @@
 # `logicapp-callback-listed`
 
-**Status: draft, not yet validated.** Deployed for validation in Phase 4 (2026-11-03). Tier: `core`. Validation: `ci`.
+**Status: validated on 2026-11-03** by two back-to-back benign replays (replay 41728291675 and 41734608159). Deployed for validation in Phase 4 (2026-11-03). Tier: `core`. Validation: `ci`.
 
 Fenrir operations: X-13 (IDs from [FENRIR-OPERATIONS.md](../../../docs/FENRIR-OPERATIONS.md)).
 
@@ -36,3 +36,4 @@ See [rule.kql](rule.kql). Source: the draft in [RULE-PROPOSALS.md](../../../docs
 |---|---|---|---|---|
 | 2026-11-03 | replay 41720948678 | fired, but 2 alerts per event (pre-fix duplicate defect) | 10 min 24 s | incidents 6 and later |
 | 2026-11-03 | replay 41728291675 | fired, 1 alert (post-fix) | 16 min 46 s | incident 18 |
+| 2026-11-03 | replay 41734608159 (back-to-back run 2) | fired, 1 alert | 12 min 45 s | incident 21 |

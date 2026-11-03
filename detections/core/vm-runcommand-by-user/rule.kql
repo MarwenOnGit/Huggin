@@ -1,4 +1,4 @@
-// Draft, not yet validated.
+// Validated 2026-11-03 in the lab (replay 41728291675 and 41734608159, docs/STATUS.md).
 // Phase 4 version (2026-11-03). Changes from RULE-PROPOSALS.md: see README.md.
 // A caller runs commands inside VMs through the control plane (action Run Command, managed
 // Run Command resource, scale set instances, Arc machines). Lab evidence X-08: one call is three

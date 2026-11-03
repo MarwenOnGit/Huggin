@@ -38,8 +38,9 @@ correctly stay silent, and the build would go red for the wrong reason.
 (`logic-huginn-replay-<run id>`, `sthgr<run id>`), acts on it once and deletes it. The pair is new
 on every run. `fenrir-chain` has no baseline; it fires because one caller performs two stages.
 
-**Test of the fix:** run `replay.yml` twice in a row. Both runs must be green. (Not yet done:
-see STATUS.md.)
+**Test of the fix:** run `replay.yml` twice in a row. Both runs must be green. **Passed on
+2026-11-03:** runs 41728291675 and 41734608159, same lab attacker, every rule fired in both, one
+alert per event.
 
 ## Duplicate alerts and ingestion delay
 

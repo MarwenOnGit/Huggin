@@ -1,4 +1,4 @@
-// Draft, not yet validated.
+// Validated 2026-11-03 in the lab (replay 41728291675 and 41734608159, docs/STATUS.md). Scope: branch C (new caller-account pair). Branches A and B are not exercised by the CI replay.
 // Phase 4 version (2026-11-03). Changes from RULE-PROPOSALS.md: see README.md.
 // Storage account key retrieval in three suspicious shapes:
 //   A: a managed identity acting from an IP it has not used in 47 hours;

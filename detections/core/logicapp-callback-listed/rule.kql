@@ -1,4 +1,4 @@
-// Draft, not yet validated.
+// Validated 2026-11-03 in the lab (replay 41728291675 and 41734608159, docs/STATUS.md).
 // Phase 4 version (2026-11-03). Changes from RULE-PROPOSALS.md: see README.md.
 // A caller lists a Logic App trigger callback URL for a workflow it has not touched in 47 hours.
 let Frequency = 5m;   // must equal rule.yaml frequency. "New" = ingested in (now() - Frequency, now()].

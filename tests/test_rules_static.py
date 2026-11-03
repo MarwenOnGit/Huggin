@@ -176,6 +176,10 @@ def test_kql_hygiene(rule_dir: Path):
     kql = (rule_dir / "rule.kql").read_text()
     if r["status"] == "draft":
         assert kql.startswith("// Draft, not yet validated."), "drafts must say so on line 1"
+    else:  # validated: say when and by which runs, and log the runs in the README
+        assert re.match(r"// Validated \d{4}-\d{2}-\d{2} .*\d{8,}", kql), "validated rules cite date and run IDs on line 1"
+        readme = (rule_dir / "README.md").read_text()
+        assert "not yet run" not in readme, "validated rule README must log its runs"
     assert re.search(rf"\b{r['severity_column']}\s*=", re.sub(r"//.*", "", kql)), "query must compute the severity column"
     code = re.sub(r"//.*", "", kql)  # ignore comments
     if r["deployable"]:
