@@ -1,0 +1,112 @@
+# Every push and pull request. No Azure login, no secrets, no OIDC token.
+# Red if a rule folder is incomplete or inconsistent, a query does not parse, or the
+# Terraform does not format, validate, lint or pass checkov.
+name: ci
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  TF_VERSION: "1.15.6"
+  TFLINT_VERSION: "v0.65.0"
+  CHECKOV_VERSION: "3.4.3"
+
+jobs:
+  rules:
+    name: Rule folders (static tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --quiet -r tests/requirements.txt
+      - name: Static rule tests
+        run: python -m pytest -q tests/test_rules_static.py
+      - name: Python scripts compile
+        run: python -m py_compile tests/validate_alert.py scripts/evidence/capture.py
+      - name: Shell scripts (bash -n, shellcheck errors)
+        run: |
+          set -euo pipefail
+          mapfile -t SCRIPTS < <(git ls-files '*.sh')
+          for f in "${SCRIPTS[@]}"; do bash -n "$f"; done
+          shellcheck -S error -x "${SCRIPTS[@]}"
+
+  kql:
+    name: KQL syntax (Kusto.Language parser)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Parse every rule.kql and functions/*.kql
+        run: dotnet run --project tests/kql_check -- "$GITHUB_WORKSPACE"
+
+  terraform:
+    name: Terraform fmt and validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+      - run: terraform fmt -check -recursive infra
+      - name: validate (no backend, no Azure)
+        run: |
+          set -euo pipefail
+          for stack in bootstrap sentinel lab; do
+            terraform -chdir=infra/$stack init -backend=false -input=false > /dev/null
+            terraform -chdir=infra/$stack validate
+          done
+
+  tflint:
+    name: tflint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: terraform-linters/setup-tflint@6ffdbaa3be476b3431f7275c26966ef32ff60337 # v6.3.2
+        with:
+          tflint_version: ${{ env.TFLINT_VERSION }}
+      - name: tflint
+        env:
+          GITHUB_TOKEN: ${{ github.token }} # plugin download rate limit only
+        run: |
+          tflint --init --config "$GITHUB_WORKSPACE/.tflint.hcl"
+          tflint --recursive --config "$GITHUB_WORKSPACE/.tflint.hcl"
+
+  checkov:
+    name: checkov
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --quiet "checkov==${CHECKOV_VERSION}"
+      - name: checkov (default flags)
+        run: checkov -d infra --config-file .checkov.yaml
+      - name: checkov (lab, every opt-in resource on)
+        run: checkov -d infra/lab --config-file .checkov.yaml --var-file tests/checkov/optin-all.tfvars

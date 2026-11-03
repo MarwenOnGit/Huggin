@@ -8,10 +8,23 @@ in [STATUS.md](STATUS.md).
 | Layer | Where | Azure | What it proves |
 |---|---|---|---|
 | Static | `make test` (`tests/test_rules_static.py`) | no | Every rule folder is complete; `rule.yaml` is valid; `fenrir_ops` exist; CI rules have `replay.sh`; licence-gated tables stay out of deployable rules; entity and alert-name columns exist in the query; the KQL `Frequency` equals the rule frequency |
-| IaC | `make lint` | no | `terraform fmt`, `validate`, tflint, checkov |
+| KQL syntax | `make kql` (`tests/kql_check`, Microsoft's `Kusto.Language` parser) | no | Every `rule.kql` and `functions/*.kql` parses. Syntax only: names are not resolved against the workspace schema, so a misspelled column still passes; the replays catch those |
+| IaC | `make lint` | no | `terraform fmt`, `validate`, tflint, checkov (also with every opt-in lab resource on) |
 | Lab evidence | `.github/workflows/evidence.yml` + `scripts/evidence/capture.py` | yes | What the real `AzureActivity` rows look like (Phase 3) |
 | Replay | `.github/workflows/replay.yml` | yes | Benign actions as the lab attacker raise the expected alerts |
 | Purple team | `docs/PURPLE-TEAM.md` (manual) | yes | Identity-tier rules against a real Fenrir run |
+
+## Every push (`ci.yml`)
+
+No Azure login and no secrets. Five parallel jobs: static rule tests (plus `py_compile`,
+`bash -n`, shellcheck at error level), KQL syntax, `terraform fmt` and `validate` (no backend),
+tflint, checkov. `make ci` runs the same checks locally (`make kql` needs the .NET SDK).
+
+Breaking a rule turns it red, for example:
+- `let Frequency = 10m;` in a rule whose `rule.yaml` says `PT5M` (static test: dedup window);
+- `lookback: P3D` with `frequency: PT5M` (static test: Sentinel rejects it);
+- a missing `|` or bracket in a query (KQL syntax job);
+- an entity mapped to a column the query does not output (static test).
 
 ## The replay loop (`replay.yml`)
 

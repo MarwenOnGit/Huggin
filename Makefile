@@ -10,13 +10,15 @@ PY         := python3
 RULE       ?=
 OP         ?=
 
-.PHONY: help init plan apply destroy fmt validate tflint checkov lint test replay evidence
+.PHONY: help init plan apply destroy fmt validate tflint checkov lint test kql ci replay evidence
 
 help:
 	@echo "make init|plan|apply STACK=bootstrap|sentinel|lab"
 	@echo "make destroy            destroy lab, then sentinel (bootstrap kept; see docs/COST.md)"
 	@echo "make lint               fmt check, validate, tflint, checkov"
 	@echo "make test               static rule tests (no Azure)"
+	@echo "make kql                KQL syntax check with Kusto.Language (needs the .NET SDK)"
+	@echo "make ci                 what ci.yml runs: test, kql, lint"
 	@echo "make replay RULE=<id>   run one core rule's benign replay (asks first)"
 	@echo "make evidence OP=<id>   Phase 3: capture AzureActivity rows for one operation"
 
@@ -55,12 +57,18 @@ tflint:
 	tflint --recursive --config "$(CURDIR)/.tflint.hcl"
 
 checkov:
-	checkov -d infra --framework terraform --quiet --compact --config-file .checkov.yaml
+	checkov -d infra --config-file .checkov.yaml
+	checkov -d infra/lab --config-file .checkov.yaml --var-file tests/checkov/optin-all.tfvars
 
 lint: fmt validate tflint checkov
 
 test:
 	$(PY) -m pytest -q tests/test_rules_static.py
+
+kql:
+	dotnet run --project tests/kql_check -- "$(CURDIR)"
+
+ci: test kql lint
 
 replay:
 	@test -n "$(RULE)" || (echo "usage: make replay RULE=<rule-id>" >&2; exit 2)

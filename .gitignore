@@ -24,3 +24,9 @@ lab-evidence/raw/
 results/
 *.secret
 .env
+
+# KQL checker build output
+tests/kql_check/bin/
+tests/kql_check/obj/
+# checkov-only var file is committed on purpose
+!tests/checkov/*.tfvars
