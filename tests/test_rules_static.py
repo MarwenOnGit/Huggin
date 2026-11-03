@@ -113,6 +113,10 @@ def test_schema(rule_dir: Path):
     assert r["severity"] in SEVERITIES
     assert isinstance(r["name"], str) and r["name"].startswith("Huginn - ")
     assert isinstance(r["trigger_threshold"], int) and r["trigger_threshold"] >= 0
+    for key in ("frequency", "lookback"):
+        hours = re.search(r"T(\d+)H", r[key])
+        assert not (hours and int(hours.group(1)) >= 24), \
+            f"{key}: write {r[key]} with days (Sentinel stores e.g. PT47H as P1DT23H, so Terraform would always show a diff)"
     freq = iso_duration_seconds(r["frequency"])
     look = iso_duration_seconds(r["lookback"])
     assert 5 * 60 <= freq <= 14 * 86400

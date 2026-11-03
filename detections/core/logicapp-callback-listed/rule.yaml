@@ -14,7 +14,7 @@ severity: Medium
 severity_column: Severity
 frequency: PT5M
 # lookback: Sentinel query period, at most P14D; must cover the query's longest baseline
-lookback: PT47H
+lookback: P1DT23H   # 47 hours, written as Sentinel stores it (PT47H causes a permanent plan diff)
 trigger_threshold: 0
 # alert_name_format: per-alert title; {{Column}} placeholders come from the query output
 alert_name_format: "Huginn: Logic App callback URL listed by {{Caller}}"
