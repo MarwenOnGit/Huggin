@@ -59,4 +59,5 @@ destroyed right after.
 | Disposable | CKV_AZURE_42 and 110 (Key Vault purge protection), CKV_AZURE_151 (encryption at host), CKV_AZURE_206, CKV2_AZURE_1 (storage redundancy and CMK) |
 | Logged elsewhere | CKV_AZURE_33, CKV2_AZURE_21 (storage logging comes from the diagnostic settings) |
 | False positive | CKV2_AZURE_31 (the subnet NSG association is missed on counted resources) |
+| tflint, inline ignores | `azurerm_resources_missing_prevent_destroy` on the storage account, container, blob, Key Vault and secret (the stack must be destroyable); `azurerm_app_service_missing_auto_heal_setting` (no application) |
 | Same as infra/lab (ADR 0004) | App Service Free tier and no application; ACR Premium-only features; container group without IP; storage name false positive |

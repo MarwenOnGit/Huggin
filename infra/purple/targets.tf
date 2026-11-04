@@ -17,6 +17,7 @@ resource "azurerm_service_plan" "target" {
   tags                = local.tags
 }
 
+# tflint-ignore: azurerm_app_service_missing_auto_heal_setting # no application to heal; disposable target (ADR 0008)
 resource "azurerm_linux_web_app" "target" {
   #checkov:skip=CKV_AZURE_214:Always On is not available on the Free tier (ADR 0008)
   #checkov:skip=CKV_AZURE_222:Public site on purpose: Kudu (X-11) is reached from the operator's machine (ADR 0008)
@@ -175,6 +176,7 @@ resource "azurerm_automation_credential" "canary" {
 
 # --- P-12 / D-01: storage keys and blob data -------------------------------------------------
 
+# tflint-ignore: azurerm_resources_missing_prevent_destroy # disposable purple-team target, must go with make purple-destroy (ADR 0008)
 resource "azurerm_storage_account" "target" {
   #checkov:skip=CKV_AZURE_59:Public network on purpose: D-01 reads blobs from the operator's machine (ADR 0008)
   #checkov:skip=CKV2_AZURE_40:Shared keys on purpose: they are what P-12 lists and D-01 uses (ADR 0008)
@@ -214,6 +216,7 @@ resource "azurerm_storage_account" "target" {
   }
 }
 
+# tflint-ignore: azurerm_resources_missing_prevent_destroy # disposable purple-team target, must go with make purple-destroy (ADR 0008)
 resource "azurerm_storage_container" "canary" {
   #checkov:skip=CKV2_AZURE_21:Blob logging comes from the diagnostic setting in diagnostics.tf (ADR 0008)
   name                  = "huginn-canary"
@@ -221,12 +224,12 @@ resource "azurerm_storage_container" "canary" {
   container_access_type = "private"
 }
 
+# tflint-ignore: azurerm_resources_missing_prevent_destroy # disposable purple-team target, must go with make purple-destroy (ADR 0008)
 resource "azurerm_storage_blob" "canary" {
-  name                   = "credentials.txt"
-  storage_account_name   = azurerm_storage_account.target.name
-  storage_container_name = azurerm_storage_container.canary.name
-  type                   = "Block"
-  source_content         = "service_password=${local.canary}\n"
+  name                 = "credentials.txt"
+  storage_container_id = azurerm_storage_container.canary.id
+  type                 = "Block"
+  source_content       = "service_password=${local.canary}\n"
 }
 
 # --- P-13 / D-03: registry admin credentials -------------------------------------------------
@@ -252,6 +255,7 @@ resource "azurerm_container_registry" "target" {
 
 # --- Key Vault (E-27 reads it; other tools go further) --------------------------------------
 
+# tflint-ignore: azurerm_resources_missing_prevent_destroy # disposable purple-team target, must go with make purple-destroy (ADR 0008)
 resource "azurerm_key_vault" "target" {
   #checkov:skip=CKV_AZURE_109:Public network on purpose: Terraform and the tools run from the operator's machine (ADR 0008)
   #checkov:skip=CKV_AZURE_189:Public network on purpose (ADR 0008)
@@ -288,6 +292,7 @@ resource "azurerm_key_vault" "target" {
   }
 }
 
+# tflint-ignore: azurerm_resources_missing_prevent_destroy # disposable purple-team target, must go with make purple-destroy (ADR 0008)
 resource "azurerm_key_vault_secret" "canary" {
   name            = "huginn-canary"
   value           = local.canary
