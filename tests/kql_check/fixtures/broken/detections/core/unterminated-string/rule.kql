@@ -1,0 +1,4 @@
+// KQL checker self-test fixture: a string literal is never closed. Must NOT parse.
+AzureActivity
+| where OperationNameValue =~ "MICROSOFT.STORAGE/STORAGEACCOUNTS/LISTKEYS/ACTION
+| project TimeGenerated, Caller

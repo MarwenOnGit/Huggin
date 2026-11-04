@@ -54,6 +54,8 @@ jobs:
           persist-credentials: false
       - name: Parse every rule.kql and functions/*.kql
         run: dotnet run --project tests/kql_check -- "$GITHUB_WORKSPACE"
+      - name: Self-test, broken fixtures must be rejected
+        run: dotnet run --no-build --project tests/kql_check -- --expect-errors "$GITHUB_WORKSPACE/tests/kql_check/fixtures/broken"
 
   terraform:
     name: Terraform fmt and validate

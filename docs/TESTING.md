@@ -8,7 +8,7 @@ in [STATUS.md](STATUS.md).
 | Layer | Where | Azure | What it proves |
 |---|---|---|---|
 | Static | `make test` (`tests/test_rules_static.py`) | no | Every rule folder is complete; `rule.yaml` is valid; `fenrir_ops` exist; CI rules have `replay.sh`; licence-gated tables stay out of deployable rules; entity and alert-name columns exist in the query; the KQL `Frequency` equals the rule frequency |
-| KQL syntax | `make kql` (`tests/kql_check`, Microsoft's `Kusto.Language` parser) | no | Every `rule.kql` and `functions/*.kql` parses. Syntax only: names are not resolved against the workspace schema, so a misspelled column still passes; the replays catch those |
+| KQL syntax | `make kql` (`tests/kql_check`, Microsoft's `Kusto.Language` parser) | no | Every `rule.kql` and `functions/*.kql` parses, and every deliberately broken query in `tests/kql_check/fixtures/broken` is rejected (self-test, `--expect-errors`). Syntax only: names are not resolved against the workspace schema, so a misspelled column still passes; the replays catch those |
 | IaC | `make lint` | no | `terraform fmt`, `validate`, tflint, checkov (also with every opt-in lab resource on) |
 | Lab evidence | `.github/workflows/evidence.yml` + `scripts/evidence/capture.py` | yes | What the real `AzureActivity` rows look like (Phase 3) |
 | Replay | `.github/workflows/replay.yml` | yes | Benign actions as the lab attacker raise the expected alerts |
