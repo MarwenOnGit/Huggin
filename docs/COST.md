@@ -37,6 +37,24 @@ account and Logic App. A nightly run of rules 1 to 3 costs about nothing. Rules 
 opt-in resources above. With ACR, one nightly run costs about 0.20 USD, or about 6 USD per month,
 so run them on demand rather than nightly.
 
+## Purple-team environment (`infra/purple`, one manual run)
+
+Estimates from public pricing, not yet measured. Created for one run and destroyed the same day.
+
+| Resource | Tier | Rough cost | Billing unit |
+|---|---|---|---|
+| Linux VM with the Azure Monitor Agent | `Standard_B2ats_v2`, Standard LRS disk | about 1 US cent per hour | per minute |
+| Container group | 0.5 vCPU, 0.5 GB | about 2 US cents per hour | per second |
+| Container registry | Basic | about 0.17 USD per day | per day |
+| Web app | F1 Free | 0 | |
+| Logic App, Automation Account, Key Vault, storage | Consumption / Basic / Standard / LRS | ~0 (a handful of operations) | per operation |
+| Diagnostic and Syslog ingestion | Log Analytics | a few cents per run (tens of MB) | per GB |
+| Defender for Resource Manager (opt-in) | subscription-wide | see its pricing page; free during its trial | per subscription |
+| Entra ID P2 (opt-in) | trial | free for the trial; Graph activity logs are billed per GB ingested | |
+
+A 4-hour run: well under 1 USD. Keeping it up 7 days for the identity baselines: about 2 to 3
+USD (mostly the VM and the registry). Raise the workspace cap only for the run window.
+
 ## Teardown
 
 ```bash

@@ -36,7 +36,7 @@ jobs:
       - name: Static rule tests
         run: python -m pytest -q tests/test_rules_static.py
       - name: Python scripts compile
-        run: python -m py_compile tests/validate_alert.py scripts/evidence/capture.py
+        run: python -m py_compile tests/validate_alert.py scripts/evidence/capture.py scripts/purple/capture.py
       - name: Shell scripts (bash -n, shellcheck errors)
         run: |
           set -euo pipefail
@@ -73,7 +73,7 @@ jobs:
       - name: validate (no backend, no Azure)
         run: |
           set -euo pipefail
-          for stack in bootstrap sentinel lab; do
+          for stack in bootstrap sentinel lab purple; do
             terraform -chdir=infra/$stack init -backend=false -input=false > /dev/null
             terraform -chdir=infra/$stack validate
           done
