@@ -1,0 +1,33 @@
+// Draft, not yet validated.
+// Requests refused by the Bastion landing zone's policy initiative (github.com/MarwenOnGit/Bastion,
+// docs/PREVENT-DETECT.md, "Every prevented attempt is also a detection"). Bastion prevents; this
+// rule makes each prevented attempt visible. Bastion's nightly policy tests deny on purpose as
+// bastion-policy-tester; that identity is excluded through HuginnTrustedAutomation
+// (var.bastion_identities), so only denials by anyone else alert.
+let Frequency = 5m;   // must equal rule.yaml frequency. "New" = ingested in (now() - Frequency, now()].
+let Window = 1h;      // must equal rule.yaml lookback; spread window for repeated attempts
+let Ops = pack_array(
+    "MICROSOFT.AUTHORIZATION/POLICIES/DENY/ACTION",
+    "MICROSOFT.AUTHORIZATION/POLICIES/DENYACTION/ACTION");   // verify in lab: how DenyAction (delete) is logged
+let Denials = HuginnActivity(Ops, Window)
+    | where CategoryValue == "Policy"
+    | where not(IsTrusted)
+    | extend Policies = todynamic(tostring(Properties_d.policies))   // verify in lab: field name and layout
+    | mv-expand Policy = Policies
+    | extend Assignment = tostring(Policy.policyAssignmentName),
+             Reference  = tostring(Policy.policyDefinitionReferenceId)
+    | where Assignment == "bastion-baseline";   // the audit-only subscription assignment never denies
+let NewCallers = Denials
+    | where IngestedAt > ago(Frequency) and IngestedAt <= now()
+    | distinct CallerOid;
+Denials
+| join kind=inner NewCallers on CallerOid
+| summarize Attempts = dcount(CorrelationId), References = make_set(Reference, 20),
+            Resources = make_set(Rid, 20), Ips = make_set(CallerIpAddress, 10),
+            FirstSeen = min(TimeGenerated), LastSeen = max(TimeGenerated)
+    by Caller, CallerOid, CallerKind, AppId, SubscriptionId
+| extend Severity = case(CallerKind == "ManagedIdentity", "High",                               // Fenrir's post-exploit caller
+                         Attempts >= 3 or array_length(References) >= 3, "Medium",               // probing several controls
+                         set_has_element(References, "protect-diagnostic-settings"), "Medium",   // trying to blind Huggin
+                         "Low"),
+         TargetResource = tostring(Resources[0])

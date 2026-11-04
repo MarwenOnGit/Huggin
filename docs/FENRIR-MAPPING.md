@@ -60,6 +60,7 @@ needs its own lab replay.
 | `rbac-self-assignment` | No PUT to `roleAssignments` anywhere in the code | `core/enumerate/verdict.py`: `ROLE_ASSIGNMENT_WRITE_ROLES` is reported as an opportunity |
 | `uai-attached-to-host` | No PUT/PATCH to any compute resource | `core/enumerate/verdict.py`: `UAI_ASSIGN_ROLES` is reported as an opportunity |
 | `automation-runbook-run` | `exploit_automation_account` only reads (X-15 to X-18) | `resource_exploit.py:REQUIRED_ACTIONS` checks for `runbooks/draft/write`, but nothing writes |
+| `bastion-policy-denial` | Fenrir makes no writes, and Azure Policy cannot block its POST actions | Bastion's [PREVENT-DETECT.md](https://github.com/MarwenOnGit/Bastion/blob/main/docs/PREVENT-DETECT.md) hands this rule to Huggin |
 
 ## Coverage summary
 

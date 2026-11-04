@@ -38,6 +38,8 @@ apply:
 	$(TF) -chdir=infra/$(STACK) apply tfplan
 
 destroy:
+	@echo "Note: infra/sentinel holds law-huginn, where the Bastion landing zone sends its logs."
+	@echo "      If Bastion is deployed, destroy it first or re-apply sentinel afterwards."
 	$(TF) -chdir=infra/lab destroy
 	$(TF) -chdir=infra/sentinel destroy
 	@echo "infra/bootstrap is kept (state storage + identities, ~0 cost). To remove it too:"

@@ -55,9 +55,35 @@ Instances exec (X-14), storage `listKeys` (P-12) and ACR `listCredentials` (P-13
 | | `devicecode-azure-mgmt-signin` | A-02, A-04 | written, **not deployable** (needs P1/P2) |
 | | `graph-directory-recon` | E-01 to E-07, X-06 | written, **not deployable** (needs P1/P2) |
 | Beyond Fenrir | `rbac-self-assignment`, `uai-attached-to-host`, `automation-runbook-run` | none | drafts. Next steps an operator would take after Fenrir reports the opportunity; Fenrir does not trigger them. |
+| | `bastion-policy-denial` | none | draft. Requests refused by the [Bastion](https://github.com/MarwenOnGit/Bastion) landing zone's policies; enable after Bastion has a control in Deny. |
 
 Measured time to alert: 5 to 17 minutes (ingestion of `AzureActivity` takes 3 to 10 minutes,
 plus the 5-minute rule schedule and Sentinel's 5-minute run delay).
+
+## Bastion: the preventive half
+
+[Bastion](https://github.com/MarwenOnGit/Bastion) is the third project: a small Azure landing
+zone in the same subscription whose guardrails stop Fenrir's next steps from working. **Bastion
+prevents, Huggin detects.** Its
+[PREVENT-DETECT.md](https://github.com/MarwenOnGit/Bastion/blob/main/docs/PREVENT-DETECT.md)
+gives, for every Fenrir operation, the Bastion control, the Huggin rule and the gap.
+
+How the two fit together:
+
+- **Bastion logs into `law-huginn`.** Its policies send Key Vault, NSG and blob logs here, and
+  its state account's blob logs too. Bastion's only write outside its own groups is one role
+  assignment on this workspace for its policy identity.
+- **Bastion's denials are Huggin events.** The `Policy` Activity log category is exported here,
+  so each request Bastion refuses becomes a row for `bastion-policy-denial`.
+- **Neither touches the other's groups.** Bastion assigns policy only to `bastion-*` groups and
+  lists `huginn-*` and `fenrir-lab-prod-rg` as protected. The Huggin lab stays outside Bastion
+  on purpose: replays need targets that Bastion would refuse.
+- **Bastion's CI is trusted here, narrowly.** Its plan and apply identities call `listKeys`
+  on every Terraform refresh, and its policy tester causes denials every night. Set
+  `bastion_identities` in `huginn.auto.tfvars.json` (Bastion's `docs/SETUP.md`, step 2) to add
+  watchlist rows for exactly those operations on Bastion's groups.
+- **Order matters.** Apply Huggin's `sentinel` stack before Bastion's bootstrap. `make destroy`
+  here removes the workspace Bastion sends its logs to.
 
 ## How it is tested
 
@@ -106,6 +132,9 @@ replay with the VM costs well under 1 US cent. Details: [docs/COST.md](docs/COST
 make destroy    # removes the lab and the Sentinel stack (asks first); bootstrap is kept (~0 cost)
 ```
 
+If Bastion is deployed, destroying the Sentinel stack removes `law-huginn`, the destination of
+Bastion's diagnostic settings. Destroy Bastion first, or re-apply `sentinel` afterwards.
+
 ## Naming
 
 The project is **Huggin**. Names created before the spelling was corrected keep their original
@@ -139,4 +168,7 @@ blog/             draft write-up with screenshots from the lab
 - Identity tier with an Entra ID P2 trial and the [purple-team run](docs/PURPLE-TEAM.md).
 - Defender XDR correlation; Logic Apps response playbooks (for example rotate a storage key after
   `storage-keys-listed`); data-plane rules on `StorageBlobLogs` and ACR logs (D-01 to D-03);
-  hunting queries for the enumerate phase; a Bastion landing zone for the lab.
+  hunting queries for the enumerate phase; these rules depend on the blob logs that
+  [Bastion](https://github.com/MarwenOnGit/Bastion) sends to `law-huginn`.
+- Validate `bastion-policy-denial` once a Bastion control is in Deny. The lab itself stays
+  outside Bastion's policies: the replays need targets that Bastion would refuse.

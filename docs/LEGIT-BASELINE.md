@@ -1,9 +1,9 @@
 # Legitimate look-alikes and exclusion strategy
 
 This doc covers every Fenrir operation that lands in `AzureActivity`. None land in `AuditLogs`
-(see [FENRIR-OPERATIONS.md](FENRIR-OPERATIONS.md)). It also covers the three Huggin rules that
+(see [FENRIR-OPERATIONS.md](FENRIR-OPERATIONS.md)). It also covers the four Huggin rules that
 Fenrir does not trigger but that watch writes (`rbac-self-assignment`, `uai-attached-to-host`,
-`automation-runbook-run`).
+`automation-runbook-run`, `bastion-policy-denial`).
 
 Everything here describes **expected** behaviour from documentation and common practice. Each
 claim marked "verify in lab" must be checked with a benign replay before it becomes an exclusion.
@@ -130,7 +130,8 @@ This is the noisiest operation in the set.
 |---|---|
 | Portal: Access keys blade, Storage browser, some data blades | User, portal `appid` |
 | Azure Storage Explorer | User. Verify the `appid` in lab. |
-| Terraform `azurerm_storage_account` | Pipeline SP on **every plan/refresh**, because the provider reads the access keys. Same accounts every time. |
+| Terraform `azurerm_storage_account` | Pipeline SP on **every plan/refresh**, because the provider reads the access keys. Same accounts every time. azurerm 4.81 calls `listKeys` on every read, even with shared keys off, and ignores a 403, so a Reader identity writes failed `listKeys` rows too. |
+| Bastion landing zone CI ([Bastion](https://github.com/MarwenOnGit/Bastion)) | `bastion-github-plan` (nightly `drift.yml`, `plan.yml`) and `bastion-github-apply`, on the `bastion-tfstate-rg` and workload accounts. Watchlisted through `bastion_identities`, `listKeys` only, `bastion-*` groups only. |
 | Bicep / ARM `listKeys()` | Inside a deployment |
 | Function Apps, Logic App connectors, Data Factory, Synapse, Machine Learning, Azure Monitor and other first-party services | Microsoft-owned or workload identities, Azure IPs, steady cadence |
 | Azure Policy remediation | Policy assignment managed identity, inside a deployment |
@@ -200,6 +201,18 @@ The abuse pattern is a runbook edited (`RUNBOOKS/DRAFT/WRITE`, `RUNBOOKS/PUBLISH
 **Exclusion strategy for `automation-runbook-run`:** do not alert on scheduled or webhook jobs.
 Alert on user-started jobs that follow an edit by the same caller, and on user-started jobs on
 accounts where that user has no 14-day history.
+
+### Policy denial (not done by Fenrir): `MICROSOFT.AUTHORIZATION/POLICIES/DENY/ACTION`
+
+| Legitimate source | What it looks like |
+|---|---|
+| Bastion's nightly policy tests (`policy-tests.yml`, 03:47 UTC) | `bastion-policy-tester`, `bastion-test-rg` only, several controls in a few minutes. Watchlisted through `bastion_identities`. |
+| A non-compliant change pushed by mistake | `bastion-github-apply` during an approved `apply.yml` run, or the operator in the portal. One or two controls, then a fixed retry. |
+| The audit-only subscription assignment (`bastion-baseline-audit`) | Never denies. The rule ignores it. |
+
+**Exclusion strategy for `bastion-policy-denial`:** only the policy tester is excluded, and only
+in `bastion-test-rg`. A denial for a managed identity is never excluded: no workload in Bastion
+should write anything, so it means a token is being used by someone else.
 
 ---
 

@@ -1,0 +1,31 @@
+id: bastion-policy-denial
+name: "Huginn - Bastion landing zone policy denied a request"
+tier: beyond-fenrir
+fenrir_ops: []
+# status: draft | validated (validated only after a lab run proved it; see docs/STATUS.md)
+status: draft
+# validation: ci (benign replay in replay.yml) | manual (docs/PURPLE-TEAM.md or a manual replay)
+validation: manual
+# deployable: false = needs a licence or a table this tenant does not have
+deployable: true
+requires_licence: none
+# severity: default only; the query's Severity column overrides it per alert
+severity: Medium
+severity_column: Severity
+frequency: PT5M
+# lookback: Sentinel query period, at most P14D; must cover the query's longest baseline
+lookback: PT1H
+trigger_threshold: 0
+# alert_name_format: per-alert title; {{Column}} placeholders come from the query output
+alert_name_format: "Huginn: Bastion policy denied {{Caller}}"
+entities:
+  - type: Account
+    fields:
+      AadUserId: CallerOid
+      FullName: Caller
+  - type: AzureResource
+    fields:
+      ResourceId: TargetResource
+mitre:
+  tactics: [DefenseEvasion]
+  techniques: [T1578, T1562.008]

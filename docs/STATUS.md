@@ -48,6 +48,7 @@ Last updated: 2026-11-04 (Phase 6 docs).
 | `rbac-self-assignment` | beyond-fenrir | none | yes | manual | draft, not yet validated |
 | `uai-attached-to-host` | beyond-fenrir | none | yes | manual | draft, not yet validated |
 | `automation-runbook-run` | beyond-fenrir | none | yes | manual | draft, not yet validated |
+| `bastion-policy-denial` | beyond-fenrir | none | yes | manual | draft, not yet validated (needs a Bastion control in Deny) |
 
 ## "Verify in lab" items (Phase 3)
 
