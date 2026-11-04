@@ -12,6 +12,7 @@ resource "azurerm_virtual_network" "purple" {
 }
 
 resource "azurerm_subnet" "vm" {
+  #checkov:skip=CKV2_AZURE_31:False positive: the NSG is attached by azurerm_subnet_network_security_group_association.vm; checkov 3.4.3 misses it on counted resources (ADR 0008)
   count                = var.enable_vm ? 1 : 0
   name                 = "snet-vm"
   resource_group_name  = azurerm_resource_group.purple.name

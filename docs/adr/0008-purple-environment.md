@@ -58,4 +58,5 @@ destroyed right after.
 | Reached from the operator's machine | CKV_AZURE_59 (storage), CKV_AZURE_109 and 189 (Key Vault), CKV2_AZURE_24 (Automation), CKV_AZURE_222 (web app), CKV2_AZURE_33 and CKV2_AZURE_32 (private endpoints) |
 | Disposable | CKV_AZURE_42 and 110 (Key Vault purge protection), CKV_AZURE_151 (encryption at host), CKV_AZURE_206, CKV2_AZURE_1 (storage redundancy and CMK) |
 | Logged elsewhere | CKV_AZURE_33, CKV2_AZURE_21 (storage logging comes from the diagnostic settings) |
+| False positive | CKV2_AZURE_31 (the subnet NSG association is missed on counted resources) |
 | Same as infra/lab (ADR 0004) | App Service Free tier and no application; ACR Premium-only features; container group without IP; storage name false positive |
