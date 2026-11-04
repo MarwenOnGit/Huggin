@@ -56,12 +56,12 @@ make apply STACK=purple
 make purple-preflight
 ```
 
-      It checks that every diagnostic setting exists and sends to `law-huginn`, reads the Key
-      Vault canary and lists the canary blob as the operator (responses discarded), and shows the
-      rows that reached the workspace per table and resource. Do not start Fenrir until it says
-      `READY`. Data-plane rows take 5 to 15 minutes: re-run with
-      `python3 scripts/purple/preflight.py --no-poke` if it is short. Logic App, Automation, web
-      app and registry log only when used, so they show no data until the run.
+It checks that every diagnostic setting exists and sends to `law-huginn`, reads the Key Vault
+canary and lists the canary blob as the operator (responses discarded), and shows the rows that
+reached the workspace per table and resource. **Do not start Fenrir until it says `READY`.**
+Data-plane rows take 5 to 15 minutes: re-run with `python3 scripts/purple/preflight.py --no-poke`
+if it is short. Logic App, Automation, web app and registry log only when used, so they show no
+data until the run.
 - [ ] `mi-signin-anomaly` and `mi-control-plane-new-ip` skip identities with no history. If they
       are in scope, keep the environment up for 7 days first (about 2 to 3 USD; docs/COST.md).
 - [ ] Note the attacker's public IP address (it should appear as `CallerIpAddress`).
