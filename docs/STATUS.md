@@ -162,6 +162,18 @@ setting, and always check the workspace, not only the raw Activity log.
   (re-counted at 23:16, after the next window): all four at about 12 min 45 s (one window,
   23:02). Incidents 19 to 22. **Baseline-trap test passed**: fresh resources per run keep the
   "new pair" rules firing for the same caller.
+- **First scheduled (nightly) replay:** run 41808405680 on 2026-11-04, commit `9943ab6`, green:
+  drift OK, replays OK, cleanup 0 left, exactly 1 alert per rule. GitHub started it at 09:32 UTC,
+  7 hours after the 02:30 cron time (scheduled workflows are best-effort and can be delayed).
+- **Third `vm-runcommand-by-user` alert explained (2026-11-04):** the rule has 3 alerts for 3 real
+  Run Command events: its first run after deployment (window end 22:02:19) caught the X-08
+  evidence run of 21:50 (rows ingested 21:58 and 22:00), then one alert per back-to-back replay.
+  Not a duplicate.
+- **Defender XDR (seen 2026-11-04):** the Defender portal lists `law-huginn` as **Connected,
+  Primary**, and incidents show `ProviderName = Microsoft XDR`. Huggin's Terraform did not do
+  this, and it was already connected when the operator first opened the Defender portal; how it
+  got connected is not confirmed. The Azure portal says Sentinel will only be available in the
+  Defender portal after 31 March 2027; analytics rules are already shown only there.
 - **Validated (2026-11-03):** `logicapp-callback-listed`, `storage-keys-listed` (branch C),
   `fenrir-chain` (multi-stage branch), `vm-runcommand-by-user`. Evidence: replays 41728291675 and
   41734608159, both green, one alert per event. Not covered: storage branches A and B,

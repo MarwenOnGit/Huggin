@@ -38,7 +38,8 @@ Breaking a rule turns it red, for example:
    has an alert after the replay start whose entities contain the lab attacker's object ID.
    It reports time-to-alert and fails after the timeout (default 30 minutes).
 
-Run it by hand: Actions, `replay`, Run workflow. It also runs nightly at 02:30 UTC.
+Run it by hand: Actions, `replay`, Run workflow. It is also scheduled nightly at 02:30 UTC; GitHub
+runs scheduled workflows on a best-effort basis, and the first nightly run started at 09:32 UTC.
 
 ## The baseline trap
 
