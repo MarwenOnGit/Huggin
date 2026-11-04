@@ -49,9 +49,19 @@ terraform -chdir=infra/purple plan -out=tfplan -var attacker_object_id=<attacker
 make apply STACK=purple
 ```
 
-- [ ] Wait about 15 minutes: diagnostic settings, the Azure Monitor Agent and role assignments
-      take time to start. Check that `Syslog` and `AzureDiagnostics` (or the resource-specific
-      tables) receive rows before starting Fenrir.
+- [ ] Wait about 15 minutes (diagnostic settings, the Azure Monitor Agent and role assignments
+      take time to start), then prove the environment logs **before** spending a Fenrir run on it:
+
+```bash
+make purple-preflight
+```
+
+      It checks that every diagnostic setting exists and sends to `law-huginn`, reads the Key
+      Vault canary and lists the canary blob as the operator (responses discarded), and shows the
+      rows that reached the workspace per table and resource. Do not start Fenrir until it says
+      `READY`. Data-plane rows take 5 to 15 minutes: re-run with
+      `python3 scripts/purple/preflight.py --no-poke` if it is short. Logic App, Automation, web
+      app and registry log only when used, so they show no data until the run.
 - [ ] `mi-signin-anomaly` and `mi-control-plane-new-ip` skip identities with no history. If they
       are in scope, keep the environment up for 7 days first (about 2 to 3 USD; docs/COST.md).
 - [ ] Note the attacker's public IP address (it should appear as `CallerIpAddress`).
