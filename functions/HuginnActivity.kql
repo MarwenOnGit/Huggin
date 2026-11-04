@@ -1,4 +1,5 @@
-// Draft, not yet validated.
+// Validated 2026-11-03 through the four validated core rules that call it (replay 41728291675 and
+// 41734608159, docs/STATUS.md). The managed-identity branch (xms_mirid) is not yet seen in the lab.
 // Saved as workspace function HuginnActivity(Ops:dynamic, Lookback:timespan)
 let Trusted = _GetWatchlist('HuginnTrustedAutomation')
     | extend PrincipalId = tolower(tostring(PrincipalId)),

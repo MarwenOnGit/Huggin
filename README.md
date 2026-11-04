@@ -126,6 +126,7 @@ scripts/          replay and evidence helpers
 tests/            static tests, KQL syntax check, alert validation
 lab-evidence/     real AzureActivity rows from lab runs, secrets redacted
 docs/             review docs, status, architecture, testing, cost, demo, ADRs
+blog/             draft write-up with screenshots from the lab
 ```
 
 ## Roadmap

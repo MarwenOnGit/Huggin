@@ -20,7 +20,8 @@ help:
 	@echo "make kql                KQL syntax check with Kusto.Language (needs the .NET SDK)"
 	@echo "make ci                 what ci.yml runs: test, kql, lint"
 	@echo "make replay RULE=<id>   run one core rule's benign replay (asks first)"
-	@echo "make evidence OP=<id>   Phase 3: capture AzureActivity rows for one operation"
+	@echo "make evidence OP=<ids>  benign evidence actions as the signed-in az identity (asks first)"
+	@echo "                        OP is comma-separated: X-08, X-13, X-13-fail, P-12"
 
 init:
 	@if [ "$(STACK)" = bootstrap ]; then \
@@ -67,6 +68,7 @@ test:
 
 kql:
 	dotnet run --project tests/kql_check -- "$(CURDIR)"
+	dotnet run --no-build --project tests/kql_check -- --expect-errors "$(CURDIR)/tests/kql_check/fixtures/broken"
 
 ci: test kql lint
 
@@ -77,5 +79,10 @@ replay:
 	"$$d/replay.sh"
 
 evidence:
-	@test -n "$(OP)" || (echo "usage: make evidence OP=<op-id>" >&2; exit 2)
-	@echo "Phase 3 evidence capture for $(OP) is not implemented yet." >&2; exit 2
+	@test -n "$(OP)" || (echo "usage: make evidence OP=<op-id>[,<op-id>...]" >&2; exit 2)
+	@echo "Azure CLI identity: $$(az account show --query user.name -o tsv)"
+	@read -r -p "Run the benign evidence actions $(OP) against the Huginn lab? [y/N] " a; [[ "$$a" == y ]]; \
+	started=$$(date -u +%Y-%m-%dT%H:%M:%SZ); \
+	scripts/evidence/run.sh "$(OP)"; \
+	echo "Done. After ingestion (3 to 10 minutes), capture the rows with:"; \
+	echo "  $(PY) scripts/evidence/capture.py --since $$started"

@@ -1,0 +1,4 @@
+// KQL checker self-test fixture: a closing bracket is missing. Must NOT parse.
+AzureActivity
+| where TimeGenerated > ago(1h
+| project TimeGenerated, Caller
