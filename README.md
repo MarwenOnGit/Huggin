@@ -66,7 +66,7 @@ plus the 5-minute rule schedule and Sentinel's 5-minute run delay).
 | [`ci.yml`](.github/workflows/ci.yml) | every push | no | static rule tests, KQL syntax (Microsoft's `Kusto.Language` parser), `terraform fmt`/`validate`, tflint, checkov |
 | [`replay.yml`](.github/workflows/replay.yml) | nightly 02:30 UTC and on demand | yes | drift check (deployed rules = git), benign replays as the lab attacker on **fresh** resources, alert validation with time-to-alert, cleanup |
 | [`evidence.yml`](.github/workflows/evidence.yml) | on demand | yes | one benign action per Fenrir operation, to capture the real log rows (`lab-evidence/`) |
-| [Purple team](docs/PURPLE-TEAM.md) | manual | yes | a real Fenrir run against the operator's own lab, for the identity tier |
+| [Purple team](docs/PURPLE-TEAM.md) | manual | yes | a real Fenrir run against a disposable, fully logged environment (`infra/purple`): every table it touched is captured, canary secrets show which logs a stolen secret reaches |
 
 Details: [docs/TESTING.md](docs/TESTING.md). Design: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 Interview walkthrough: [docs/DEMO.md](docs/DEMO.md).
@@ -119,6 +119,7 @@ Sentinel rule titles ("Huginn - ...").
 infra/bootstrap   state storage, resource groups, GitHub OIDC identities (applied once, by a person)
 infra/sentinel    workspace, Sentinel, Activity log connector, function, watchlist, rules
 infra/lab         Fenrir-shaped targets: Logic App, storage, identity, VM network
+infra/purple      disposable purple-team environment: every Fenrir target, every log source on (manual)
 detections/       one folder per rule: rule.kql, rule.yaml, README.md, replay.sh (CI rules)
 functions/        HuginnActivity.kql (shared normalisation)
 watchlists/       HuginnTrustedAutomation.csv
@@ -136,7 +137,7 @@ blog/             draft write-up with screenshots from the lab
   last 14 days of (caller, resource) pairs to a `HuginnKnownPairs` watchlist that the fast rules
   read ([ADR 0005](docs/adr/0005-replays-fresh-resources-and-dedup.md), option C).
 - Opt-in lab batch and validation for X-10, X-14, P-13 (rules 5 to 7).
-- Identity tier with an Entra ID P2 trial and the [purple-team run](docs/PURPLE-TEAM.md).
+- First [purple-team run](docs/PURPLE-TEAM.md) on `infra/purple` (written, not yet applied): measure every blind spot instead of citing documentation; identity tier with an Entra ID P2 trial.
 - Defender XDR correlation; Logic Apps response playbooks (for example rotate a storage key after
   `storage-keys-listed`); data-plane rules on `StorageBlobLogs` and ACR logs (D-01 to D-03);
   hunting queries for the enumerate phase; a Bastion landing zone for the lab.

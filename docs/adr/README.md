@@ -9,3 +9,4 @@
 | [0005](0005-replays-fresh-resources-and-dedup.md) | Benign replays instead of Fenrir in CI; fresh resources per run (baseline trap); ingestion-time deduplication; 47-hour baselines; drift check instead of apply |
 | [0006](0006-licence-tiers.md) | Licence tiers |
 | [0007](0007-watchlist-not-client-app-exclusions.md) | Watchlist exclusions by identity, never by client app |
+| [0008](0008-purple-environment.md) | A disposable, fully logged purple-team environment (`infra/purple`): every log source on, canary secrets, capture from every table |

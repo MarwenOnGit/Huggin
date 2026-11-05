@@ -3,18 +3,22 @@
 SHELL := /bin/bash
 .SHELLFLAGS := -euo pipefail -c
 
-STACKS     ?= bootstrap sentinel lab
+STACKS     ?= bootstrap sentinel lab purple
 STACK      ?= sentinel
 TF         := terraform
 PY         := python3
 RULE       ?=
 OP         ?=
+comma      := ,
 
-.PHONY: help init plan apply destroy fmt validate tflint checkov lint test kql ci replay evidence
+.PHONY: help init plan apply destroy purple-destroy purple-preflight purple-capture fmt validate tflint checkov lint test kql ci replay evidence
 
 help:
-	@echo "make init|plan|apply STACK=bootstrap|sentinel|lab"
-	@echo "make destroy            destroy lab, then sentinel (bootstrap kept; see docs/COST.md)"
+	@echo "make init|plan|apply STACK=bootstrap|sentinel|lab|purple"
+	@echo "make destroy            destroy purple (if initialised), lab, then sentinel (bootstrap kept; see docs/COST.md)"
+	@echo "make purple-destroy     destroy the purple-team environment right after a run (docs/PURPLE-TEAM.md)"
+	@echo "make purple-preflight   after apply: diagnostic settings present and data reaching the workspace"
+	@echo "make purple-capture SINCE=<utc> LABEL=<name> IND=<id,ip,...>   every table the run touched"
 	@echo "make lint               fmt check, validate, tflint, checkov"
 	@echo "make test               static rule tests (no Azure)"
 	@echo "make kql                KQL syntax check with Kusto.Language (needs the .NET SDK)"
@@ -38,10 +42,22 @@ apply:
 	$(TF) -chdir=infra/$(STACK) apply tfplan
 
 destroy:
+	@if [ -d infra/purple/.terraform ]; then $(TF) -chdir=infra/purple destroy; fi
 	$(TF) -chdir=infra/lab destroy
 	$(TF) -chdir=infra/sentinel destroy
 	@echo "infra/bootstrap is kept (state storage + identities, ~0 cost). To remove it too:"
 	@echo "  terraform -chdir=infra/bootstrap destroy"
+
+purple-destroy:
+	$(TF) -chdir=infra/purple destroy
+
+purple-preflight:
+	$(PY) scripts/purple/preflight.py
+
+purple-capture:
+	@test -n "$(SINCE)" -a -n "$(LABEL)" || (echo "usage: make purple-capture SINCE=<utc> LABEL=<name> [UNTIL=<utc>] [IND=a,b]" >&2; exit 2)
+	$(PY) scripts/purple/capture.py --since "$(SINCE)" --label "$(LABEL)" $(if $(UNTIL),--until "$(UNTIL)") \
+	  $(foreach i,$(subst $(comma), ,$(IND)),--indicator "$(i)")
 
 fmt:
 	$(TF) fmt -check -recursive infra

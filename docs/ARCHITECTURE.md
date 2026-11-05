@@ -91,7 +91,8 @@ table missing from the workspace fails to deploy. The static tests enforce this.
 | Replays | Act only on resources they create in `huginn-lab-rg`; refuse any other resource group or subscription; discard every response; never request a managed-identity token; delete through a trap plus a cleanup sweep that fails if anything is left. |
 | Bootstrap | Applied by a person (Owner and Global Administrator), locally. CI never holds rights to create apps or role assignments. |
 | Watchlist | Exclusions are (principal, scope prefix, operation) triples with an owner, reason and expiry. Never a whole client app ([ADR 0007](adr/0007-watchlist-not-client-app-exclusions.md)). |
-| Out of bounds | `fenrir-lab-prod-rg` (the operator's Fenrir lab) is used only in the manual purple-team run; Huggin's code and CI never touch it. |
+| Out of bounds | `fenrir-lab-prod-rg` (the operator's Fenrir lab): Huggin's code and CI never touch it. |
+| Purple-team environment | `huginn-purple-rg` (`infra/purple`, ADR 0008): created and destroyed by a person for one run; CI lints it but never applies it, and the replay drift check excludes it. The attacker is a dedicated user with Contributor on that resource group only. |
 
 ## Stacks
 
