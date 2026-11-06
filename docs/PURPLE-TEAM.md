@@ -2,7 +2,7 @@
 
 A checklist for the operator, not for CI. The operator runs their own Fenrir against a
 disposable, fully logged environment (`infra/purple`, [ADR 0008](adr/0008-purple-environment.md)),
-captures **everything** the run left in the workspace, and records what Huggin's rules saw. This
+captures **everything** the run left in the workspace, and records what Huginn's rules saw. This
 document names only Fenrir's commands from its README; how to use Fenrir is in Fenrir's own
 documentation and legal notice.
 
@@ -13,7 +13,7 @@ documentation and legal notice.
 - Attacker: a **dedicated, low-privilege** Entra user, Contributor on `huginn-purple-rg` only
   (`attacker_object_id`). Fenrir acts on every resource group its identity can see: never run it
   as the operator's own account, which is Owner of the subscription.
-- `fenrir-lab-prod-rg` stays out of bounds for Huggin's code and CI. A run against it is still
+- `fenrir-lab-prod-rg` stays out of bounds for Huginn's code and CI. A run against it is still
   possible by hand; the steps below then apply without the `infra/purple` parts.
 - Write down the date, the operator, and the planned window before starting.
 

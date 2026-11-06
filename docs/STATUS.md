@@ -1,9 +1,9 @@
-# Huggin status
+# Huginn status
 
 This file is the single source of truth for what works. A rule is "validated" only after a lab
 run produced the expected alert, with a date and evidence. Everything else is a draft.
 
-Last updated: 2026-11-04 (Phase 6 docs).
+Last updated: 2026-11-06 (project name back to Huginn, repository renamed).
 
 ## Environment
 
@@ -13,7 +13,7 @@ Last updated: 2026-11-04 (Phase 6 docs).
 | Subscription | `42146134-9464-4c2d-86b0-afe414704284` (Azure for Students) | 2026-11-03 |
 | Region | `francecentral` (allowed by the subscription's "Allowed resource deployment regions" policy, together with italynorth, swedencentral, polandcentral, switzerlandnorth) | 2026-11-03 |
 | Entra ID licence | None (`subscribedSkus` empty). Identity tier: written, not deployable. | 2026-11-03 |
-| Out of bounds | `fenrir-lab-prod-rg`: Fenrir lab, manual purple-team run only. Huggin and its CI never read, write or delete it. | 2026-11-03 |
+| Out of bounds | `fenrir-lab-prod-rg`: Fenrir lab, manual purple-team run only. Huginn and its CI never read, write or delete it. | 2026-11-03 |
 | vCPU quota, francecentral | Was 6 of 6 (three deallocated 2-vCPU VMs). After the operator deleted two VMs: **2 of 6** regional; Basv2 family 0 of 10. Deallocated VMs still count. | 2026-11-03 |
 | Smallest VM size | **`Standard_B2ats_v2`** (2 vCPU, 1 GB, x64, Gen2, Basv2 family). Correction: the Phase 2 check dropped every size with any restriction, but B-series v2 restrictions are **zone-only** (zones 2, 3), so a non-zonal VM is allowed. `Standard_F1als_v7` cannot be used: its family quota is 0 of 0, like every 1-vCPU size left in the region. B1ls and B1s are not offered in francecentral. | 2026-11-03 |
 | Tools | Terraform 1.15.6, Azure CLI 2.91.0 + `log-analytics` 1.0.0b3, Python 3.14.4, gh 2.46.0, tflint 0.65.0, checkov 3.4.3 | 2026-11-03 |
@@ -55,7 +55,7 @@ Last updated: 2026-11-04 (Phase 6 docs).
 | # | Question | Rules that depend on it | Answer | Evidence |
 |---|---|---|---|---|
 | 1 | Exact `ActivityStatusValue` strings (`Start`/`Success`/`Failure` or `Started`/`Succeeded`/`Failed`) | all core | **Answered (workspace, 2026-11-03):** `ActivityStatusValue` is `Start`, `Success`, `Failure`. `ActivitySubstatusValue` is `OK` on success, `NotFound` on the failed X-13 probe. (The raw Activity log API shows `Started`/`Succeeded`/`Failed` instead.) The drafts accept both forms, so no change needed. | `lab-evidence/X-13.json`, `lab-evidence/P-12.json` (run 2026-11-03T20:44Z) |
-| 2 | Does `Claims_d` keep `idtyp`, `appid`, `xms_mirid` and the object ID claim? | `HuginnActivity`, all core, `mi-control-plane-new-ip` | **Answered for service principals (workspace):** `Claims_d` keeps `idtyp` (`app`), `appid` (client ID) and the object ID under `http://schemas.microsoft.com/identity/claims/objectidentifier`. For users (raw API): `idtyp`, `appid`, `objectidentifier` present. `xms_mirid`: absent for both, as expected. **Managed identity: open**, moved to the manual purple-team run (Huggin CI must not replay MI tokens). | `lab-evidence/X-13.json`, `lab-evidence/P-12.json` (run 2026-11-03T20:44Z) |
+| 2 | Does `Claims_d` keep `idtyp`, `appid`, `xms_mirid` and the object ID claim? | `HuginnActivity`, all core, `mi-control-plane-new-ip` | **Answered for service principals (workspace):** `Claims_d` keeps `idtyp` (`app`), `appid` (client ID) and the object ID under `http://schemas.microsoft.com/identity/claims/objectidentifier`. For users (raw API): `idtyp`, `appid`, `objectidentifier` present. `xms_mirid`: absent for both, as expected. **Managed identity: open**, moved to the manual purple-team run (Huginn CI must not replay MI tokens). | `lab-evidence/X-13.json`, `lab-evidence/P-12.json` (run 2026-11-03T20:44Z) |
 | 3 | Is `Caller` the object ID or the app ID for service principals and managed identities? | all core | **Answered (workspace):** for a service principal, `Caller` is the **service principal object ID** (`380b1f3c-...`), not the app ID (`a9d1d6db-...`, which is in `Claims_d.appid`). For a user, `Caller` is the UPN. Managed identity: open (purple-team run). | `lab-evidence/X-13.json`, `lab-evidence/P-12.json` (run 2026-11-03T20:44Z) |
 | 4 | Do X-10 rows keep `/config/publishingcredentials` in `_ResourceId` or `Properties_d.entity`? | `appservice-publish-creds` | open | |
 | 5 | Is X-13's `_ResourceId` the trigger or the workflow? | `logicapp-callback-listed` | **Answered (workspace):** `_ResourceId` and `Properties_d.entity` are the **trigger** (`.../workflows/logic-huginn-lab/triggers/manual`). The draft's `extract("^(.*/workflows/[^/]+)")` returns the workflow, as intended. | `lab-evidence/X-13.json`, `lab-evidence/P-12.json` (run 2026-11-03T20:44Z) |
@@ -98,11 +98,12 @@ Last updated: 2026-11-04 (Phase 6 docs).
 | 2026-11-03 | `mi-control-plane-new-ip`, `graph-directory-recon` | Added a constant `Severity` column. | The drafts had none, and every rule maps alert severity from that column. |
 | 2026-11-03 | Plan: lab attacker principal | Moved from `infra/lab` to `infra/bootstrap`. | Creating apps and role assignments needs Graph and User Access Administrator rights. Keeping them in the person-run bootstrap means CI never holds those rights (ADR 0003). |
 | 2026-11-03 | Plan: lab attacker federated credential | Subject is the GitHub environment `lab-replay`, not the main branch. | Only replay jobs can obtain the attacker token. |
-| 2026-11-03 | OIDC federated credential subjects | Rebuilt from GitHub's ID-based format `repo:MarwenOnGit@183097322/Huggin@1444286931:...` (variables `github_owner_id`, `github_repository_id`). Removed the deploy identity's `pull_request` credential. | The first evidence run failed with `AADSTS700213`: the repository uses immutable subjects (`use_immutable_subject: true`), so the name-only subjects never matched. ADR 0003. |
+| 2026-11-03 | OIDC federated credential subjects | Rebuilt from GitHub's ID-based format `repo:MarwenOnGit@183097322/Huginn@1444286931:...` (variables `github_owner_id`, `github_repository_id`). Removed the deploy identity's `pull_request` credential. | The first evidence run failed with `AADSTS700213`: the repository uses immutable subjects (`use_immutable_subject: true`), so the name-only subjects never matched. ADR 0003. |
 | 2026-11-03 | Facts table: frequency and period | Corrected: PT5M with P14D is rejected by the Sentinel API (period >= 2 days needs frequency >= 1 hour). | Found by a failed apply. Earlier entry was a documentation reading, not a test. |
 | 2026-11-03 | `logicapp-callback-listed`, `storage-keys-listed` | Lookback P14D to PT47H, KQL `Baseline = 47h`, frequency stays PT5M. | Sentinel API rule (period >= 2 days needs frequency >= 1 hour). Option A, ADR 0005. Option C on the roadmap. |
 | 2026-11-03 | X-08 lab VM | No longer a Terraform opt-in resource. Terraform keeps only a free VNet, subnet and deny-all-inbound NSG; each evidence or replay run creates a fresh `Standard_B2ats_v2` VM (no public IP, no identity, throwaway SSH key deleted before the VM exists, OS disk and NIC deleted with it), runs `hostname`, and deletes it through a trap, with `cleanup.sh` as a safety net. | The VM must never outlive a run, running or deallocated (quota). A per-run VM also gives a fresh (caller, VM) pair. |
 | 2026-11-04 | Project name | "Huginn" renamed to **Huggin** in all Markdown (29 occurrences, 16 files, including the four review docs). Deployed identifiers keep the old spelling: `HuginnActivity`, `HuginnTrustedAutomation`, `huginn-*` resource groups and apps, rule titles "Huginn - ...". | Operator's correction; renaming deployed names needs Azure changes. |
+| 2026-11-06 | Project name | Reverted the 2026-11-04 change: the project is **Huginn** again in all Markdown, the diagrams and the purple runbook description; the GitHub repository is renamed to `MarwenOnGit/Huginn`. OIDC subjects now use `.../Huginn@1444286931:...` (`github_repository` in `infra/bootstrap`). The rule GUID seed URL keeps `MarwenOnGit/Huggin` so no rule is recreated. | Operator: the 2026-11-04 correction was a mistake. |
 | 2026-11-03 | Deduplication in all four Phase 4 rules | Upper bound `<= now()` on "new"; per-request (`CorrelationId`) counting in `vm-runcommand-by-user` and `fenrir-chain`. | Duplicate alerts on the first green replay; see "First alerts and the duplicate-alert defect". |
 | 2026-11-03 | `vm-runcommand-by-user` | Rewritten from X-08 evidence: dedup per request, Medium (not Low) for unknown service principals, entities, alert title; added to `enabled_rules`; `replay.sh` with a fresh VM per run. | Lab evidence X-08. |
 | 2026-11-03 | `evidence.yml` | `ops` input has no default. | Run 41724390758 meant to do X-08 but ran the default ops. |
@@ -119,7 +120,7 @@ Last updated: 2026-11-04 (Phase 6 docs).
 ## Incident: AzureActivity export gap (resolved for new events, 2026-11-03)
 
 The subscription diagnostic setting `huginn-activity-to-law` exists with Administrative, Security,
-Policy and Alert enabled. The raw Activity log shows about 40 Huggin events between 15:30 and
+Policy and Alert enabled. The raw Activity log shows about 40 Huginn events between 15:30 and
 15:42 UTC, but by 20:14 UTC the workspace held only 2 rows (both at 15:30:36, the Sentinel
 solution write). No cap was hit (`Usage`: AzureActivity 0.016 MB, non-billable) and `_LogOperation`
 is empty. There were no subscription events after 15:42, so whether the export works now is
@@ -171,7 +172,7 @@ setting, and always check the workspace, not only the raw Activity log.
   evidence run of 21:50 (rows ingested 21:58 and 22:00), then one alert per back-to-back replay.
   Not a duplicate.
 - **Defender XDR (seen 2026-11-04):** the Defender portal lists `law-huginn` as **Connected,
-  Primary**, and incidents show `ProviderName = Microsoft XDR`. Huggin's Terraform did not do
+  Primary**, and incidents show `ProviderName = Microsoft XDR`. Huginn's Terraform did not do
   this, and it was already connected when the operator first opened the Defender portal; how it
   got connected is not confirmed. The Azure portal says Sentinel will only be available in the
   Defender portal after 31 March 2027; analytics rules are already shown only there.

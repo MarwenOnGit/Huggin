@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Huggin: evidence</title>
+<title>Huginn: replay</title>
 <style>
 /* engineered-paper theme (cool near-white, one accent, mono labels)
  * All colors/fonts flow through the :root tokens — tweak tokens, not scattered values. */
@@ -82,7 +82,7 @@ h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(22px, 
 
 .scroller { overflow-x: auto; border: 1px solid var(--color-rule-2); border-radius: var(--radius-card); }
 /* CANVAS SIZE: set width/height here AND on svg.edges AND its viewBox — keep the three in sync */
-.canvas { position: relative; width: 900px; height: 700px; background: var(--color-paper);
+.canvas { position: relative; width: 900px; height: 850px; background: var(--color-paper);
   background-image:
     linear-gradient(var(--color-rule) 1px, transparent 1px),
     linear-gradient(90deg, var(--color-rule) 1px, transparent 1px);
@@ -145,7 +145,7 @@ h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(22px, 
 .node .name span, .node .role span { background: var(--color-veil); backdrop-filter: blur(1.5px);
   padding: 0 var(--space-xs); border-radius: 3px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
 
-svg.edges { position:absolute; inset:0; width:900px; height:700px; pointer-events:none; }
+svg.edges { position:absolute; inset:0; width:900px; height:850px; pointer-events:none; }
 .e  { stroke: var(--color-accent); stroke-width:1.6; fill:none; }   /* primary flow */
 .n  { stroke: var(--color-neutral); stroke-width:1.4; fill:none; }  /* internal */
 path.aws { stroke: var(--color-ink); stroke-width:1.6; fill:none; }
@@ -173,94 +173,98 @@ path.aws { stroke: var(--color-ink); stroke-width:1.6; fill:none; }
 
   <header class="head">
     <div>
-      <div class="kicker">huggin / .github/workflows/evidence.yml + scripts/evidence/capture.py</div>
-      <h1>Evidence: record what Azure really logs for each operation</h1>
+      <div class="kicker">huginn / .github/workflows/replay.yml</div>
+      <h1>Replay: act like the attacker, then prove Sentinel alerted</h1>
     </div>
-    <p class="lede">You start it by hand and type the operations each time. The rows it produces are what the rules were written from.</p>
+    <p class="lede">Nightly at 02:30 UTC or by hand. Four jobs, two identities, and no Terraform apply: a plan with any change stops the run.</p>
   </header>
 
   <div class="scroller">
   <div class="canvas">
 
-    <div class="group gb" style="left:170px; top:80px; width:180px; height:430px;">
-      <div class="g-label"><img class="lt" src="data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMTAyNCAxMDI0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIGZpbGw9Im5vbmUiPjxwYXRoIGZpbGw9IiMxYjFmMjMiIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTUxMiAwQzIyOS4xMiAwIDAgMjI5LjEyIDAgNTEyYzAgMjI2LjU2IDE0Ni41NiA0MTcuOTIgMzUwLjA4IDQ4NS43NiAyNS42IDQuNDggMzUuMi0xMC44OCAzNS4yLTI0LjMyIDAtMTIuMTYtLjY0LTUyLjQ4LS42NC05NS4zNi0xMjguNjQgMjMuNjgtMTYxLjkyLTMxLjM2LTE3Mi4xNi02MC4xNi01Ljc2LTE0LjcyLTMwLjcyLTYwLjE2LTUyLjQ4LTcyLjMyLTE3LjkyLTkuNi00My41Mi0zMy4yOC0uNjQtMzMuOTIgNDAuMzItLjY0IDY5LjEyIDM3LjEyIDc4LjcyIDUyLjQ4IDQ2LjA4IDc3LjQ0IDExOS42OCA1NS42OCAxNDkuMTIgNDIuMjQgNC40OC0zMy4yOCAxNy45Mi01NS42OCAzMi42NC02OC40OC0xMTMuOTItMTIuOC0yMzIuOTYtNTYuOTYtMjMyLjk2LTI1Mi44IDAtNTUuNjggMTkuODQtMTAxLjc2IDUyLjQ4LTEzNy42LTUuMTItMTIuOC0yMy4wNC02NS4yOCA1LjEyLTEzNS42OCAwIDAgNDIuODgtMTMuNDQgMTQwLjggNTIuNDggNDAuOTYtMTEuNTIgODQuNDgtMTcuMjggMTI4LTE3LjI4czg3LjA0IDUuNzYgMTI4IDE3LjI4Yzk3LjkyLTY2LjU2IDE0MC44LTUyLjQ4IDE0MC44LTUyLjQ4IDI4LjE2IDcwLjQgMTAuMjQgMTIyLjg4IDUuMTIgMTM1LjY4IDMyLjY0IDM1Ljg0IDUyLjQ4IDgxLjI4IDUyLjQ4IDEzNy42IDAgMTk2LjQ4LTExOS42OCAyNDAtMjMzLjYgMjUyLjggMTguNTYgMTYgMzQuNTYgNDYuNzIgMzQuNTYgOTQuNzIgMCA2OC40OC0uNjQgMTIzLjUyLS42NCAxNDAuOCAwIDEzLjQ0IDkuNiAyOS40NCAzNS4yIDI0LjMyQzg3Ny40NCA5MjkuOTIgMTAyNCA3MzcuOTIgMTAyNCA1MTIgMTAyNCAyMjkuMTIgNzk0Ljg4IDAgNTEyIDAiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjwvc3ZnPg==" alt=""><img class="dk" src="data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMTAyNCAxMDI0IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTggMEMzLjU4IDAgMCAzLjU4IDAgOEMwIDExLjU0IDIuMjkgMTQuNTMgNS40NyAxNS41OUM1Ljg3IDE1LjY2IDYuMDIgMTUuNDIgNi4wMiAxNS4yMUM2LjAyIDE1LjAyIDYuMDEgMTQuMzkgNi4wMSAxMy43MkM0IDE0LjA5IDMuNDggMTMuMjMgMy4zMiAxMi43OEMzLjIzIDEyLjU1IDIuODQgMTEuODQgMi41IDExLjY1QzIuMjIgMTEuNSAxLjgyIDExLjEzIDIuNDkgMTEuMTJDMy4xMiAxMS4xMSAzLjU3IDExLjcgMy43MiAxMS45NEM0LjQ0IDEzLjE1IDUuNTkgMTIuODEgNi4wNSAxMi42QzYuMTIgMTIuMDggNi4zMyAxMS43MyA2LjU2IDExLjUzQzQuNzggMTEuMzMgMi45MiAxMC42NCAyLjkyIDcuNThDMi45MiA2LjcxIDMuMjMgNS45OSAzLjc0IDUuNDNDMy42NiA1LjIzIDMuMzggNC40MSAzLjgyIDMuMzFDMy44MiAzLjMxIDQuNDkgMy4xIDYuMDIgNC4xM0M2LjY2IDMuOTUgNy4zNCAzLjg2IDguMDIgMy44NkM4LjcgMy44NiA5LjM4IDMuOTUgMTAuMDIgNC4xM0MxMS41NSAzLjA5IDEyLjIyIDMuMzEgMTIuMjIgMy4zMUMxMi42NiA0LjQxIDEyLjM4IDUuMjMgMTIuMyA1LjQzQzEyLjgxIDUuOTkgMTMuMTIgNi43IDEzLjEyIDcuNThDMTMuMTIgMTAuNjUgMTEuMjUgMTEuMzMgOS40NyAxMS41M0M5Ljc2IDExLjc4IDEwLjAxIDEyLjI2IDEwLjAxIDEzLjAxQzEwLjAxIDE0LjA4IDEwIDE0Ljk0IDEwIDE1LjIxQzEwIDE1LjQyIDEwLjE1IDE1LjY3IDEwLjU1IDE1LjU5QzEzLjcxIDE0LjUzIDE2IDExLjUzIDE2IDhDMTYgMy41OCAxMi40MiAwIDggMFoiIHRyYW5zZm9ybT0ic2NhbGUoNjQpIiBmaWxsPSIjZmZmZiIvPgo8L3N2Zz4K" alt="">GitHub</div>
+    <div class="group gb" style="left:10px; top:80px; width:820px; height:350px;">
+      <div class="g-label"><img class="lt" src="data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMTAyNCAxMDI0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIGZpbGw9Im5vbmUiPjxwYXRoIGZpbGw9IiMxYjFmMjMiIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTUxMiAwQzIyOS4xMiAwIDAgMjI5LjEyIDAgNTEyYzAgMjI2LjU2IDE0Ni41NiA0MTcuOTIgMzUwLjA4IDQ4NS43NiAyNS42IDQuNDggMzUuMi0xMC44OCAzNS4yLTI0LjMyIDAtMTIuMTYtLjY0LTUyLjQ4LS42NC05NS4zNi0xMjguNjQgMjMuNjgtMTYxLjkyLTMxLjM2LTE3Mi4xNi02MC4xNi01Ljc2LTE0LjcyLTMwLjcyLTYwLjE2LTUyLjQ4LTcyLjMyLTE3LjkyLTkuNi00My41Mi0zMy4yOC0uNjQtMzMuOTIgNDAuMzItLjY0IDY5LjEyIDM3LjEyIDc4LjcyIDUyLjQ4IDQ2LjA4IDc3LjQ0IDExOS42OCA1NS42OCAxNDkuMTIgNDIuMjQgNC40OC0zMy4yOCAxNy45Mi01NS42OCAzMi42NC02OC40OC0xMTMuOTItMTIuOC0yMzIuOTYtNTYuOTYtMjMyLjk2LTI1Mi44IDAtNTUuNjggMTkuODQtMTAxLjc2IDUyLjQ4LTEzNy42LTUuMTItMTIuOC0yMy4wNC02NS4yOCA1LjEyLTEzNS42OCAwIDAgNDIuODgtMTMuNDQgMTQwLjggNTIuNDggNDAuOTYtMTEuNTIgODQuNDgtMTcuMjggMTI4LTE3LjI4czg3LjA0IDUuNzYgMTI4IDE3LjI4Yzk3LjkyLTY2LjU2IDE0MC44LTUyLjQ4IDE0MC44LTUyLjQ4IDI4LjE2IDcwLjQgMTAuMjQgMTIyLjg4IDUuMTIgMTM1LjY4IDMyLjY0IDM1Ljg0IDUyLjQ4IDgxLjI4IDUyLjQ4IDEzNy42IDAgMTk2LjQ4LTExOS42OCAyNDAtMjMzLjYgMjUyLjggMTguNTYgMTYgMzQuNTYgNDYuNzIgMzQuNTYgOTQuNzIgMCA2OC40OC0uNjQgMTIzLjUyLS42NCAxNDAuOCAwIDEzLjQ0IDkuNiAyOS40NCAzNS4yIDI0LjMyQzg3Ny40NCA5MjkuOTIgMTAyNCA3MzcuOTIgMTAyNCA1MTIgMTAyNCAyMjkuMTIgNzk0Ljg4IDAgNTEyIDAiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjwvc3ZnPg==" alt=""><img class="dk" src="data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMTAyNCAxMDI0IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTggMEMzLjU4IDAgMCAzLjU4IDAgOEMwIDExLjU0IDIuMjkgMTQuNTMgNS40NyAxNS41OUM1Ljg3IDE1LjY2IDYuMDIgMTUuNDIgNi4wMiAxNS4yMUM2LjAyIDE1LjAyIDYuMDEgMTQuMzkgNi4wMSAxMy43MkM0IDE0LjA5IDMuNDggMTMuMjMgMy4zMiAxMi43OEMzLjIzIDEyLjU1IDIuODQgMTEuODQgMi41IDExLjY1QzIuMjIgMTEuNSAxLjgyIDExLjEzIDIuNDkgMTEuMTJDMy4xMiAxMS4xMSAzLjU3IDExLjcgMy43MiAxMS45NEM0LjQ0IDEzLjE1IDUuNTkgMTIuODEgNi4wNSAxMi42QzYuMTIgMTIuMDggNi4zMyAxMS43MyA2LjU2IDExLjUzQzQuNzggMTEuMzMgMi45MiAxMC42NCAyLjkyIDcuNThDMi45MiA2LjcxIDMuMjMgNS45OSAzLjc0IDUuNDNDMy42NiA1LjIzIDMuMzggNC40MSAzLjgyIDMuMzFDMy44MiAzLjMxIDQuNDkgMy4xIDYuMDIgNC4xM0M2LjY2IDMuOTUgNy4zNCAzLjg2IDguMDIgMy44NkM4LjcgMy44NiA5LjM4IDMuOTUgMTAuMDIgNC4xM0MxMS41NSAzLjA5IDEyLjIyIDMuMzEgMTIuMjIgMy4zMUMxMi42NiA0LjQxIDEyLjM4IDUuMjMgMTIuMyA1LjQzQzEyLjgxIDUuOTkgMTMuMTIgNi43IDEzLjEyIDcuNThDMTMuMTIgMTAuNjUgMTEuMjUgMTEuMzMgOS40NyAxMS41M0M5Ljc2IDExLjc4IDEwLjAxIDEyLjI2IDEwLjAxIDEzLjAxQzEwLjAxIDE0LjA4IDEwIDE0Ljk0IDEwIDE1LjIxQzEwIDE1LjQyIDEwLjE1IDE1LjY3IDEwLjU1IDE1LjU5QzEzLjcxIDE0LjUzIDE2IDExLjUzIDE2IDhDMTYgMy41OCAxMi40MiAwIDggMFoiIHRyYW5zZm9ybT0ic2NhbGUoNjQpIiBmaWxsPSIjZmZmZiIvPgo8L3N2Zz4K" alt="">replay.yml · GitHub Actions</div>
     </div>
-    <div class="group azure" style="left:390px; top:80px; width:460px; height:210px;">
+    <div class="group azure" style="left:10px; top:460px; width:820px; height:350px;">
       <div class="g-label"><img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgiIGhlaWdodD0iMTgiIHZpZXdCb3g9IjAgMCAxOCAxOCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNNS4zMzQ5MiAxLjM3NDkxQzUuNDQ3MTcgMS4wNDIyOSA1Ljc1OTA5IDAuODE4MzU5IDYuMTEwMTQgMC44MTgzNTlIMTEuMjVMNS45MTUxMyAxNi42MjU1QzUuODAyODcgMTYuOTU4MSA1LjQ5MDk1IDE3LjE4MiA1LjEzOTkxIDE3LjE4MkgxLjEzOTY4QzAuNTc5OTM2IDE3LjE4MiAwLjE4NTQ2NiAxNi42MzI1IDAuMzY0NDYxIDE2LjEwMjJMNS4zMzQ5MiAxLjM3NDkxWiIgZmlsbD0idXJsKCNwYWludDBfbGluZWFyXzYxMDJfMTM0NDY5KSIgLz48cGF0aCBkPSJNMTMuNTUxNyAxMS40NTQ2SDUuNDUxMjZDNS4xMTA5IDExLjQ1NDYgNC45NDY1NyAxMS44NzE1IDUuMTk1MzkgMTIuMTAzN0wxMC40MDA1IDE2Ljk2MThDMTAuNTUyIDE3LjEwMzIgMTAuNzUxNSAxNy4xODE5IDEwLjk1ODcgMTcuMTgxOUgxNS41NDUzTDEzLjU1MTcgMTEuNDU0NloiIGZpbGw9IiMwMDc4RDQiIC8+PHBhdGggZD0iTTYuMTEwMTQgMC44MTgzNTlDNS43NTkwOSAwLjgxODM1OSA1LjQ0NzE3IDEuMDQyMjkgNS4zMzQ5MiAxLjM3NDkxTDAuMzY0NDYxIDE2LjEwMjJDMC4xODU0NjYgMTYuNjMyNSAwLjU3OTkzNiAxNy4xODIgMS4xMzk2OCAxNy4xODJINS4xMzk5MUM1LjQ5MDk1IDE3LjE4MiA1LjgwMjg3IDE2Ljk1ODEgNS45MTUxMyAxNi42MjU1TDYuOTAzMjcgMTMuNjk3NkwxMC40MDA1IDE2Ljk2MTdDMTAuNTUyIDE3LjEwMzIgMTAuNzUxNSAxNy4xODE4IDEwLjk1ODggMTcuMTgxOEgxNS41NDU0TDEzLjU1MTcgMTEuNDU0NUg3LjY2MDMyTDExLjI1IDAuODE4MzU5SDYuMTEwMTRaIiBmaWxsPSJ1cmwoI3BhaW50MV9saW5lYXJfNjEwMl8xMzQ0NjkpIiAvPjxwYXRoIGQ9Ik0xMi42NjUgMS4zNzQ3OEMxMi41NTI4IDEuMDQyMTcgMTIuMjQwOSAwLjgxODIzNyAxMS44ODk4IDAuODE4MjM3SDYuMTM2MjlINi4xNjI1NEM2LjUxMzU4IDAuODE4MjM3IDYuODI1NTEgMS4wNDIxNyA2LjkzNzc2IDEuMzc0NzhMMTEuOTA4MiAxNi4xMDIxQzEyLjA4NzIgMTYuNjMyNCAxMS42OTI3IDE3LjE4MTkgMTEuMTMzIDE3LjE4MTlIMTEuMDQ1NEgxNi44NjAzQzE3LjQyIDE3LjE4MTkgMTcuODE0NSAxNi42MzI0IDE3LjYzNTUgMTYuMTAyMUwxMi42NjUgMS4zNzQ3OFoiIGZpbGw9InVybCgjcGFpbnQyX2xpbmVhcl82MTAyXzEzNDQ2OSkiIC8+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJwYWludDBfbGluZWFyXzYxMDJfMTM0NDY5IiB4MT0iNi4wNzUxMiIgeTE9IjEuMzg0NzYiIHgyPSIwLjczODE3OCIgeTI9IjE3LjE1MTQiIGdyYWRpZW50VW5pdHM9InVzZXJTcGFjZU9uVXNlIj48c3RvcCBzdG9wLWNvbG9yPSIjMTE0QThCIiAvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzA2NjlCQyIgLz48L2xpbmVhckdyYWRpZW50PjxsaW5lYXJHcmFkaWVudCBpZD0icGFpbnQxX2xpbmVhcl82MTAyXzEzNDQ2OSIgeDE9IjEwLjM0MDIiIHkxPSIxMS40NTY0IiB4Mj0iOS4xMDciIHkyPSIxMS44NzM0IiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHN0b3Agc3RvcC1vcGFjaXR5PSIwLjMiIC8+PHN0b3Agb2Zmc2V0PSIwLjA3MTE3NjgiIHN0b3Atb3BhY2l0eT0iMC4yIiAvPjxzdG9wIG9mZnNldD0iMC4zMjEwMzEiIHN0b3Atb3BhY2l0eT0iMC4xIiAvPjxzdG9wIG9mZnNldD0iMC42MjMwNTMiIHN0b3Atb3BhY2l0eT0iMC4wNSIgLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3Atb3BhY2l0eT0iMCIgLz48L2xpbmVhckdyYWRpZW50PjxsaW5lYXJHcmFkaWVudCBpZD0icGFpbnQyX2xpbmVhcl82MTAyXzEzNDQ2OSIgeDE9IjkuNDU4NTgiIHkxPSIxLjM4NDY3IiB4Mj0iMTUuMzE2OCIgeTI9IjE2Ljk5MjYiIGdyYWRpZW50VW5pdHM9InVzZXJTcGFjZU9uVXNlIj48c3RvcCBzdG9wLWNvbG9yPSIjM0NDQkY0IiAvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzI4OTJERiIgLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48L3N2Zz4=" alt="">Azure · francecentral</div>
     </div>
-    <div class="group ga" style="left:510px; top:300px; width:340px; height:350px;">
-      <div class="g-label">Operator laptop</div>
-    </div>
 
-    <svg class="edges" viewBox="0 0 900 700" aria-hidden="true">
+    <svg class="edges" viewBox="0 0 900 850" aria-hidden="true">
       <defs>
         <marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
           <path d="M0 0 L10 5 L0 10 z" fill="context-stroke"/>
         </marker>
       </defs>
-      <path class="e" d="M136 170 H224" marker-end="url(#ar)"/>
-      <path class="e" d="M296 170 H444" marker-end="url(#ar)"/>
-      <text class="el a" x="330" y="162" text-anchor="middle">act once</text>
-      <path class="e" d="M516 170 H584" marker-end="url(#ar)"/>
-      <path class="e" d="M656 170 H724" marker-end="url(#ar)"/>
-      <path class="n" d="M760 354 V246" marker-end="url(#ar)"/>
-      <text class="el" x="770" y="326">query rows</text>
-      <path class="n" d="M724 390 H636" marker-end="url(#ar)"/>
-      <text class="el" x="680" y="382" text-anchor="middle">redact</text>
-      <path class="n" d="M760 466 V530 H636" marker-end="url(#ar)"/>
-      <text class="el" x="700" y="522" text-anchor="middle">full rows</text>
-      <path class="n dash" d="M564 390 H296" marker-end="url(#ar)"/>
-      <text class="el" x="430" y="382" text-anchor="middle">you commit</text>
+      <!-- job order (needs) -->
+      <path class="n" d="M136 170 H224" marker-end="url(#ar)"/>
+      <path class="n" d="M296 170 H384" marker-end="url(#ar)"/>
+      <text class="el" x="340" y="162" text-anchor="middle">no drift</text>
+      <path class="n" d="M456 170 H704" marker-end="url(#ar)"/>
+      <text class="el" x="580" y="162" text-anchor="middle">needs replay</text>
+      <path class="n" d="M432 246 V310 H544" marker-end="url(#ar)"/>
+      <text class="el" x="490" y="302" text-anchor="middle">always()</text>
+      <!-- primary: replay -> logs -> alert -> validate -->
+      <path class="e" d="M410 246 V514" marker-end="url(#ar)"/>
+      <text class="el a" x="420" y="420">act as attacker</text>
+      <path class="e" d="M420 626 V654" marker-end="url(#ar)"/>
+      <path class="e" d="M456 690 H704" marker-end="url(#ar)"/>
+      <text class="el a" x="580" y="682" text-anchor="middle">export</text>
+      <path class="e" d="M740 246 V654" marker-end="url(#ar)"/>
+      <text class="el a" x="750" y="420">poll alerts</text>
+      <!-- support -->
+      <path class="n" d="M260 246 V514" marker-end="url(#ar)"/>
+      <text class="el" x="270" y="420">plan</text>
+      <path class="n" d="M580 386 V550 H456" marker-end="url(#ar)"/>
+      <text class="el" x="590" y="510">delete leftovers</text>
     </svg>
 
     <div class="node" style="left:34px;top:140px">
-      <div class="tile"><img src="data:image/svg+xml;base64,PCEtLSBAbGljZW5zZSBsdWNpZGUtc3RhdGljIHYxLjY4LjAgLSBJU0MgLS0+CjxzdmcKICBjbGFzcz0ibHVjaWRlIGx1Y2lkZS11c2VyIgogIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIKICB3aWR0aD0iMjQiCiAgaGVpZ2h0PSIyNCIKICB2aWV3Qm94PSIwIDAgMjQgMjQiCiAgZmlsbD0ibm9uZSIKICBzdHJva2U9IiMzZDQ2NjAiCiAgc3Ryb2tlLXdpZHRoPSIxLjciCiAgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIgogIHN0cm9rZS1saW5lam9pbj0icm91bmQiCj4KICA8cGF0aCBkPSJNMTkgMjF2LTJhNCA0IDAgMCAwLTQtNEg5YTQgNCAwIDAgMC00IDR2MiIgLz4KICA8Y2lyY2xlIGN4PSIxMiIgY3k9IjciIHI9IjQiIC8+Cjwvc3ZnPgo=" alt=""></div>
-      <div class="name"><span>Operator</span></div><div class="role"><span>X-08,X-13,P-12</span></div>
+      <div class="tile"><img src="data:image/svg+xml;base64,PCEtLSBAbGljZW5zZSBsdWNpZGUtc3RhdGljIHYxLjY5LjAgLSBJU0MgLS0+CjxzdmcKICBjbGFzcz0ibHVjaWRlIGx1Y2lkZS1jbG9jayIKICB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciCiAgd2lkdGg9IjI0IgogIGhlaWdodD0iMjQiCiAgdmlld0JveD0iMCAwIDI0IDI0IgogIGZpbGw9Im5vbmUiCiAgc3Ryb2tlPSIjM2Q0NjYwIgogIHN0cm9rZS13aWR0aD0iMS43IgogIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIKICBzdHJva2UtbGluZWpvaW49InJvdW5kIgo+CiAgPGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTAiIC8+CiAgPHBhdGggZD0iTTEyIDZ2Nmw0IDIiIC8+Cjwvc3ZnPgo=" alt=""></div>
+      <div class="name"><span>Schedule</span></div><div class="role"><span>02:30 UTC · manual</span></div>
     </div>
     <div class="node" style="left:194px;top:140px">
+      <div class="tile"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGlkPSJMb2dvcyIgd2lkdGg9IjUwIiBoZWlnaHQ9IjcyIiB2aWV3Qm94PSIwIDAgNTAgNzIiPjxkZWZzPjxzdHlsZT4uY2xzLTF7ZmlsbDojYTA2N2RhO2ZpbGwtcnVsZTpldmVub2RkO3N0cm9rZS13aWR0aDowfTwvc3R5bGU+PC9kZWZzPjxwYXRoIGQ9Im0xNy4yIDE3LjUgMTUuNSA5djE4bC0xNS41LTl2LTE4Wk0zNC41IDI2LjV2MThsMTUuNS05di0xOGwtMTUuNSA5Wk0wIDcuNXYxOGwxNS41IDl2LTE4TDAgNy41Wk0xNy4yIDU1LjVsMTUuNSA5di0xOGwtMTUuNS05djE4WiIgY2xhc3M9ImNscy0xIi8+PC9zdmc+" alt=""></div>
+      <div class="name"><span>1. drift</span></div><div class="role"><span>deploy SP · plan</span></div>
+    </div>
+    <div class="node" style="left:354px;top:140px">
       <div class="tile"><img src="data:image/svg+xml;base64,PCEtLSBAbGljZW5zZSBsdWNpZGUtc3RhdGljIHYxLjY5LjAgLSBJU0MgLS0+CjxzdmcKICBjbGFzcz0ibHVjaWRlIGx1Y2lkZS10ZXJtaW5hbCIKICB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciCiAgd2lkdGg9IjI0IgogIGhlaWdodD0iMjQiCiAgdmlld0JveD0iMCAwIDI0IDI0IgogIGZpbGw9Im5vbmUiCiAgc3Ryb2tlPSIjM2Q0NjYwIgogIHN0cm9rZS13aWR0aD0iMS43IgogIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIKICBzdHJva2UtbGluZWpvaW49InJvdW5kIgo+CiAgPHBhdGggZD0iTTEyIDE5aDgiIC8+CiAgPHBhdGggZD0ibTQgMTcgNi02LTYtNiIgLz4KPC9zdmc+Cg==" alt=""></div>
-      <div class="name"><span>evidence job</span></div><div class="role"><span>lab-attacker · OIDC</span></div>
+      <div class="name"><span>2. replay</span></div><div class="role"><span>attacker · run.sh</span></div>
     </div>
-    <div class="node" style="left:414px;top:140px">
+    <div class="node" style="left:674px;top:140px">
+      <div class="tile"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGZpbGw9Im5vbmUiIHZpZXdCb3g9IjE2IDE2IDMyIDMyIj48cGF0aCBmaWxsPSJ1cmwoI2EpIiBkPSJNMzEuODg1IDE2Yy04LjEyNCAwLTcuNjE3IDMuNTIzLTcuNjE3IDMuNTIzbC4wMSAzLjY1aDcuNzUydjEuMDk1SDIxLjE5N1MxNiAyMy42NzggMTYgMzEuODc2YzAgOC4xOTYgNC41MzcgNy45MDYgNC41MzcgNy45MDZoMi43MDh2LTMuODA0cy0uMTQ2LTQuNTM3IDQuNDY1LTQuNTM3aDcuNjg4czQuMzIuMDcgNC4zMi00LjE3NXYtNy4wMTlTNDAuMzc0IDE2IDMxLjg4NSAxNnptLTQuMjc1IDIuNDU0YTEuMzk0IDEuMzk0IDAgMSAxIDAgMi43OSAxLjM5MyAxLjM5MyAwIDAgMS0xLjM5NS0xLjM5NWMwLS43NzEuNjI0LTEuMzk1IDEuMzk1LTEuMzk1eiIvPjxwYXRoIGZpbGw9InVybCgjYikiIGQ9Ik0zMi4xMTUgNDcuODMzYzguMTI0IDAgNy42MTctMy41MjMgNy42MTctMy41MjNsLS4wMS0zLjY1SDMxLjk3di0xLjA5NWgxMC44MzJTNDggNDAuMTU1IDQ4IDMxLjk1OGMwLTguMTk3LTQuNTM3LTcuOTA2LTQuNTM3LTcuOTA2aC0yLjcwOHYzLjgwM3MuMTQ2IDQuNTM3LTQuNDY1IDQuNTM3aC03LjY4OHMtNC4zMi0uMDctNC4zMiA0LjE3NXY3LjAxOXMtLjY1NiA0LjI0NyA3LjgzMyA0LjI0N3ptNC4yNzUtMi40NTRhMS4zOTMgMS4zOTMgMCAwIDEtMS4zOTUtMS4zOTUgMS4zOTQgMS4zOTQgMCAxIDEgMS4zOTUgMS4zOTV6Ii8+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJhIiB4MT0iMTkuMDc1IiB4Mj0iMzQuODk4IiB5MT0iMTguNzgyIiB5Mj0iMzQuNjU4IiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHN0b3Agc3RvcC1jb2xvcj0iIzM4N0VCOCIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzM2Njk5NCIvPjwvbGluZWFyR3JhZGllbnQ+PGxpbmVhckdyYWRpZW50IGlkPSJiIiB4MT0iMjguODA5IiB4Mj0iNDUuODAzIiB5MT0iMjguODgyIiB5Mj0iNDUuMTYzIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHN0b3Agc3RvcC1jb2xvcj0iI0ZGRTA1MiIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI0ZGQzMzMSIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjwvc3ZnPg==" alt=""></div>
+      <div class="name"><span>4. validate</span></div><div class="role"><span>deploy SP · ≤30 min</span></div>
+    </div>
+    <div class="node" style="left:514px;top:280px">
+      <div class="tile"><img src="data:image/svg+xml;base64,PCEtLSBAbGljZW5zZSBsdWNpZGUtc3RhdGljIHYxLjY5LjAgLSBJU0MgLS0+CjxzdmcKICBjbGFzcz0ibHVjaWRlIGx1Y2lkZS10cmFzaC0yIgogIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIKICB3aWR0aD0iMjQiCiAgaGVpZ2h0PSIyNCIKICB2aWV3Qm94PSIwIDAgMjQgMjQiCiAgZmlsbD0ibm9uZSIKICBzdHJva2U9IiMzZDQ2NjAiCiAgc3Ryb2tlLXdpZHRoPSIxLjciCiAgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIgogIHN0cm9rZS1saW5lam9pbj0icm91bmQiCj4KICA8cGF0aCBkPSJNMTAgMTF2NiIgLz4KICA8cGF0aCBkPSJNMTQgMTF2NiIgLz4KICA8cGF0aCBkPSJNMTkgNnYxNGEyIDIgMCAwIDEtMiAySDdhMiAyIDAgMCAxLTItMlY2IiAvPgogIDxwYXRoIGQ9Ik0zIDZoMTgiIC8+CiAgPHBhdGggZD0iTTggNlY0YTIgMiAwIDAgMSAyLTJoNGEyIDIgMCAwIDEgMiAydjIiIC8+Cjwvc3ZnPgo=" alt=""></div>
+      <div class="name"><span>3. cleanup</span></div><div class="role"><span>lab-attacker</span></div>
+    </div>
+    <div class="node" style="left:194px;top:520px">
+      <div class="tile"><img src="data:image/svg+xml;base64,PHN2ZyBpZD0iZjJmMDQzNDktOGFlZS00NDEzLTg0YzktYTkwNTM2MTFiMzE5IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxOCIgaGVpZ2h0PSIxOCIgdmlld0JveD0iMCAwIDE4IDE4Ij48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImFkNGM0Zjk2LTA5YWEtNGY5MS1iYTEwLTVjYjhhZDUzMGY3NCIgeDE9IjkiIHkxPSIxNS44MyIgeDI9IjkiIHkyPSI1Ljc5IiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjYjNiM2IzIiAvPjxzdG9wIG9mZnNldD0iMC4yNiIgc3RvcC1jb2xvcj0iI2MxYzFjMSIgLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNlNmU2ZTYiIC8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHRpdGxlPkljb24tc3RvcmFnZS04NjwvdGl0bGU+PHBhdGggZD0iTS41LDUuNzloMTdhMCwwLDAsMCwxLDAsMHY5LjQ4YS41Ny41NywwLDAsMS0uNTcuNTdIMS4wN2EuNTcuNTcsMCwwLDEtLjU3LS41N1Y1Ljc5QTAsMCwwLDAsMSwuNSw1Ljc5WiIgZmlsbD0idXJsKCNhZDRjNGY5Ni0wOWFhLTRmOTEtYmExMC01Y2I4YWQ1MzBmNzQpIiAvPjxwYXRoIGQ9Ik0xLjA3LDIuMTdIMTYuOTNhLjU3LjU3LDAsMCwxLC41Ny41N1Y1Ljc5YTAsMCwwLDAsMSwwLDBILjVhMCwwLDAsMCwxLDAsMFYyLjczQS41Ny41NywwLDAsMSwxLjA3LDIuMTdaIiBmaWxsPSIjMzdjMmIxIiAvPjxwYXRoIGQ9Ik0yLjgxLDYuODlIMTUuMThhLjI3LjI3LDAsMCwxLC4yNi4yN3YxLjRhLjI3LjI3LDAsMCwxLS4yNi4yN0gyLjgxYS4yNy4yNywwLDAsMS0uMjYtLjI3VjcuMTZBLjI3LjI3LDAsMCwxLDIuODEsNi44OVoiIGZpbGw9IiNmZmYiIC8+PHBhdGggZD0iTTIuODIsOS42OEgxNS4xOWEuMjcuMjcsMCwwLDEsLjI2LjI3djEuNDFhLjI3LjI3LDAsMCwxLS4yNi4yN0gyLjgyYS4yNy4yNywwLDAsMS0uMjYtLjI3VjEwQS4yNy4yNywwLDAsMSwyLjgyLDkuNjhaIiBmaWxsPSIjMzdjMmIxIiAvPjxwYXRoIGQ9Ik0yLjgyLDEyLjVIMTUuMTlhLjI3LjI3LDAsMCwxLC4yNi4yN3YxLjQxYS4yNy4yNywwLDAsMS0uMjYuMjdIMi44MmEuMjcuMjcsMCwwLDEtLjI2LS4yN1YxMi43N0EuMjcuMjcsMCwwLDEsMi44MiwxMi41WiIgZmlsbD0iIzI1ODI3NyIgLz48L3N2Zz4=" alt=""></div>
+      <div class="name"><span>Azure Storage</span></div><div class="role"><span>tfstate</span></div>
+    </div>
+    <div class="node" style="left:354px;top:520px">
       <div class="tile"><img src="data:image/svg+xml;base64,PCEtLSBAbGljZW5zZSBsdWNpZGUtc3RhdGljIHYxLjY5LjAgLSBJU0MgLS0+CjxzdmcKICBjbGFzcz0ibHVjaWRlIGx1Y2lkZS1yZWZyZXNoLWN3IgogIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIKICB3aWR0aD0iMjQiCiAgaGVpZ2h0PSIyNCIKICB2aWV3Qm94PSIwIDAgMjQgMjQiCiAgZmlsbD0ibm9uZSIKICBzdHJva2U9IiMzZDQ2NjAiCiAgc3Ryb2tlLXdpZHRoPSIxLjciCiAgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIgogIHN0cm9rZS1saW5lam9pbj0icm91bmQiCj4KICA8cGF0aCBkPSJNMyAxMmE5IDkgMCAwIDEgOS05IDkuNzUgOS43NSAwIDAgMSA2Ljc0IDIuNzRMMjEgOCIgLz4KICA8cGF0aCBkPSJNMjEgM3Y1aC01IiAvPgogIDxwYXRoIGQ9Ik0yMSAxMmE5IDkgMCAwIDEtOSA5IDkuNzUgOS43NSAwIDAgMS02Ljc0LTIuNzRMMyAxNiIgLz4KICA8cGF0aCBkPSJNOCAxNkgzdjUiIC8+Cjwvc3ZnPgo=" alt=""></div>
-      <div class="name"><span>Lab resources</span></div><div class="role"><span>huginn-lab-rg</span></div>
+      <div class="name"><span>Replay resources</span></div><div class="role"><span>huginn-lab-rg</span></div>
     </div>
-    <div class="node" style="left:554px;top:140px">
+    <div class="node" style="left:354px;top:660px">
       <div class="tile"><img src="data:image/svg+xml;base64,PHN2ZyBpZD0iZjQ1YWI3ODItN2E2ZC00ZjE4LTk0MTYtOGY3OGE0MDg3MTU1IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxOCIgaGVpZ2h0PSIxOCIgdmlld0JveD0iMCAwIDE4IDE4Ij48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImY4YTZhNGZjLTllOGQtNDIzYS05N2QxLWQ1MTQxNzllY2U3MyIgeDE9IjguMTUiIHkxPSIxNy41IiB4Mj0iOC4xNSIgeTI9IjIuMDkiIGdyYWRpZW50VW5pdHM9InVzZXJTcGFjZU9uVXNlIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiMxOTg4ZDkiIC8+PHN0b3Agb2Zmc2V0PSIwLjkiIHN0b3AtY29sb3I9IiM1NGFlZjAiIC8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHRpdGxlPkljb24tbWFuYWdlLTMwNTwvdGl0bGU+PHBhdGggZD0iTTEuOTMsMi4xMSwzLjE0LjdBLjU5LjU5LDAsMCwxLDMuNTkuNUgxNS4yYS44MS44MSwwLDAsMSwuODkuODN2MTQuNWEuNTcuNTcsMCwwLDEtLjIuNDNsLTEuMywxLjE5SDIuNzJsLS44MS0uMzNaIiBmaWxsPSIjMDA1YmExIiAvPjxwYXRoIGQ9Ik0yLjkxLDIuMWwuNzQtLjg0QS41LjUsMCwwLDEsNCwxLjA4SDE0Ljg5YS41Mi41MiwwLDAsMSwuNTIuNTJWMTUuMzhhLjUyLjUyLDAsMCwxLS4xNy4zOWwtMS4xNiwxLjA1WiIgZmlsbD0iI2ZmZiIgLz48cGF0aCBkPSJNMTQsMi4wOUgyYS4wNi4wNiwwLDAsMC0uMDYuMDZ2MTVhLjM5LjM5LDAsMCwwLC4zOS4zOEgxNGEuMzguMzgsMCwwLDAsLjM4LS4zOFYyLjQ4QS4zOS4zOSwwLDAsMCwxNCwyLjA5WiIgZmlsbD0idXJsKCNmOGE2YTRmYy05ZThkLTQyM2EtOTdkMS1kNTE0MTc5ZWNlNzMpIiAvPjxyZWN0IHg9IjQuNzIiIHk9IjYuMiIgd2lkdGg9IjYuNTgiIGhlaWdodD0iMi4zOCIgcng9IjAuMjgiIGZpbGw9IiNmZmYiIC8+PC9zdmc+" alt=""></div>
       <div class="name"><span>Activity Log</span></div><div class="role"><span>diag setting</span></div>
     </div>
-    <div class="node" style="left:694px;top:140px">
-      <div class="tile"><img src="data:image/svg+xml;base64,PHN2ZyBpZD0iYjM4OGU5NDQtNTUwOS00OWM5LTg0ZDctZjM4YmZmYTk5NWIyIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxOCIgaGVpZ2h0PSIxOCIgdmlld0JveD0iMCAwIDE4IDE4Ij48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImE5OTdlMjAzLTFkN2QtNGNiOS1iMTMxLTVkYzQ0ZTAyOWI0NiIgeDE9IjUuMjMiIHkxPSIxNy40NSIgeDI9IjUuMjMiIHkyPSI4LjA5IiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjMTk4OGQ5IiAvPjxzdG9wIG9mZnNldD0iMC45IiBzdG9wLWNvbG9yPSIjNTRhZWYwIiAvPjwvbGluZWFyR3JhZGllbnQ+PGxpbmVhckdyYWRpZW50IGlkPSJlMTIyZTlkOC1hZWU1LTRmMWEtYTYwZS1iMWVhZTM1NWRhYTUiIHgxPSIxMS41IiB5MT0iMTIuNDUiIHgyPSIxMS41IiB5Mj0iMC41NSIgZ3JhZGllbnRVbml0cz0idXNlclNwYWNlT25Vc2UiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzE5OGFiMyIgLz48c3RvcCBvZmZzZXQ9IjAuMDEiIHN0b3AtY29sb3I9IiMxOThiYjQiIC8+PHN0b3Agb2Zmc2V0PSIwLjQ0IiBzdG9wLWNvbG9yPSIjMjdiMmQ3IiAvPjxzdG9wIG9mZnNldD0iMC43OSIgc3RvcC1jb2xvcj0iIzJmY2JlZCIgLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiMzMmQ0ZjUiIC8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHRpdGxlPkljb24tbWFuYWdlLTMwNzwvdGl0bGU+PHBhdGggZD0iTTUuNTksMTMuMTNIOS45MXY0LjMySDUuNTlaTTEuMTUsMTcuNDVINC44N1YxMy4xM0guNTV2My43MkEuNi42LDAsMCwwLDEuMTUsMTcuNDVabS0uNi01SDQuODdWOC4wOUguNTVaIiBmaWxsPSJ1cmwoI2E5OTdlMjAzLTFkN2QtNGNiOS1iMTMxLTVkYzQ0ZTAyOWI0NikiIC8+PHBhdGggZD0iTTExLjUuNTVhNS44OSw1Ljg5LDAsMCwxLDUuOTUsNiw1Ljg5LDUuODksMCwwLDEtNS45NSw1Ljk1SDUuNTVWNi41QTUuODksNS44OSwwLDAsMSwxMS41LjU1WiIgZmlsbC1ydWxlPSJldmVub2RkIiBmaWxsPSJ1cmwoI2UxMjJlOWQ4LWFlZTUtNGYxYS1hNjBlLWIxZWFlMzU1ZGFhNSkiIC8+PHJlY3QgeD0iNy41OSIgeT0iNS42NSIgd2lkdGg9IjEuMzYiIGhlaWdodD0iNC4wOCIgZmlsbD0iI2ZmZiIgLz48cmVjdCB4PSIxMC4zMSIgeT0iNy4wMSIgd2lkdGg9IjEuMzYiIGhlaWdodD0iMi43MiIgZmlsbD0iI2ZmZiIgLz48cmVjdCB4PSIxMy4wMyIgeT0iNC4yOSIgd2lkdGg9IjEuMzYiIGhlaWdodD0iNS40NCIgZmlsbD0iI2ZmZiIgLz48L3N2Zz4=" alt=""></div>
-      <div class="name"><span>Log Analytics</span></div><div class="role"><span>law-huginn</span></div>
-    </div>
-    <div class="node" style="left:194px;top:360px">
-      <div class="tile"><img src="data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMTAyNCAxMDI0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIGZpbGw9Im5vbmUiPjxwYXRoIGZpbGw9IiMxYjFmMjMiIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTUxMiAwQzIyOS4xMiAwIDAgMjI5LjEyIDAgNTEyYzAgMjI2LjU2IDE0Ni41NiA0MTcuOTIgMzUwLjA4IDQ4NS43NiAyNS42IDQuNDggMzUuMi0xMC44OCAzNS4yLTI0LjMyIDAtMTIuMTYtLjY0LTUyLjQ4LS42NC05NS4zNi0xMjguNjQgMjMuNjgtMTYxLjkyLTMxLjM2LTE3Mi4xNi02MC4xNi01Ljc2LTE0LjcyLTMwLjcyLTYwLjE2LTUyLjQ4LTcyLjMyLTE3LjkyLTkuNi00My41Mi0zMy4yOC0uNjQtMzMuOTIgNDAuMzItLjY0IDY5LjEyIDM3LjEyIDc4LjcyIDUyLjQ4IDQ2LjA4IDc3LjQ0IDExOS42OCA1NS42OCAxNDkuMTIgNDIuMjQgNC40OC0zMy4yOCAxNy45Mi01NS42OCAzMi42NC02OC40OC0xMTMuOTItMTIuOC0yMzIuOTYtNTYuOTYtMjMyLjk2LTI1Mi44IDAtNTUuNjggMTkuODQtMTAxLjc2IDUyLjQ4LTEzNy42LTUuMTItMTIuOC0yMy4wNC02NS4yOCA1LjEyLTEzNS42OCAwIDAgNDIuODgtMTMuNDQgMTQwLjggNTIuNDggNDAuOTYtMTEuNTIgODQuNDgtMTcuMjggMTI4LTE3LjI4czg3LjA0IDUuNzYgMTI4IDE3LjI4Yzk3LjkyLTY2LjU2IDE0MC44LTUyLjQ4IDE0MC44LTUyLjQ4IDI4LjE2IDcwLjQgMTAuMjQgMTIyLjg4IDUuMTIgMTM1LjY4IDMyLjY0IDM1Ljg0IDUyLjQ4IDgxLjI4IDUyLjQ4IDEzNy42IDAgMTk2LjQ4LTExOS42OCAyNDAtMjMzLjYgMjUyLjggMTguNTYgMTYgMzQuNTYgNDYuNzIgMzQuNTYgOTQuNzIgMCA2OC40OC0uNjQgMTIzLjUyLS42NCAxNDAuOCAwIDEzLjQ0IDkuNiAyOS40NCAzNS4yIDI0LjMyQzg3Ny40NCA5MjkuOTIgMTAyNCA3MzcuOTIgMTAyNCA1MTIgMTAyNCAyMjkuMTIgNzk0Ljg4IDAgNTEyIDAiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjwvc3ZnPg==" alt=""></div>
-      <div class="name"><span>Repository</span></div><div class="role"><span>lab-evidence/</span></div>
-    </div>
-    <div class="node" style="left:694px;top:360px">
-      <div class="tile"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGZpbGw9Im5vbmUiIHZpZXdCb3g9IjE2IDE2IDMyIDMyIj48cGF0aCBmaWxsPSJ1cmwoI2EpIiBkPSJNMzEuODg1IDE2Yy04LjEyNCAwLTcuNjE3IDMuNTIzLTcuNjE3IDMuNTIzbC4wMSAzLjY1aDcuNzUydjEuMDk1SDIxLjE5N1MxNiAyMy42NzggMTYgMzEuODc2YzAgOC4xOTYgNC41MzcgNy45MDYgNC41MzcgNy45MDZoMi43MDh2LTMuODA0cy0uMTQ2LTQuNTM3IDQuNDY1LTQuNTM3aDcuNjg4czQuMzIuMDcgNC4zMi00LjE3NXYtNy4wMTlTNDAuMzc0IDE2IDMxLjg4NSAxNnptLTQuMjc1IDIuNDU0YTEuMzk0IDEuMzk0IDAgMSAxIDAgMi43OSAxLjM5MyAxLjM5MyAwIDAgMS0xLjM5NS0xLjM5NWMwLS43NzEuNjI0LTEuMzk1IDEuMzk1LTEuMzk1eiIvPjxwYXRoIGZpbGw9InVybCgjYikiIGQ9Ik0zMi4xMTUgNDcuODMzYzguMTI0IDAgNy42MTctMy41MjMgNy42MTctMy41MjNsLS4wMS0zLjY1SDMxLjk3di0xLjA5NWgxMC44MzJTNDggNDAuMTU1IDQ4IDMxLjk1OGMwLTguMTk3LTQuNTM3LTcuOTA2LTQuNTM3LTcuOTA2aC0yLjcwOHYzLjgwM3MuMTQ2IDQuNTM3LTQuNDY1IDQuNTM3aC03LjY4OHMtNC4zMi0uMDctNC4zMiA0LjE3NXY3LjAxOXMtLjY1NiA0LjI0NyA3LjgzMyA0LjI0N3ptNC4yNzUtMi40NTRhMS4zOTMgMS4zOTMgMCAwIDEtMS4zOTUtMS4zOTUgMS4zOTQgMS4zOTQgMCAxIDEgMS4zOTUgMS4zOTV6Ii8+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJhIiB4MT0iMTkuMDc1IiB4Mj0iMzQuODk4IiB5MT0iMTguNzgyIiB5Mj0iMzQuNjU4IiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHN0b3Agc3RvcC1jb2xvcj0iIzM4N0VCOCIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzM2Njk5NCIvPjwvbGluZWFyR3JhZGllbnQ+PGxpbmVhckdyYWRpZW50IGlkPSJiIiB4MT0iMjguODA5IiB4Mj0iNDUuODAzIiB5MT0iMjguODgyIiB5Mj0iNDUuMTYzIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHN0b3Agc3RvcC1jb2xvcj0iI0ZGRTA1MiIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI0ZGQzMzMSIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjwvc3ZnPg==" alt=""></div>
-      <div class="name"><span>capture.py</span></div><div class="role"><span>read-only</span></div>
-    </div>
-    <div class="node" style="left:534px;top:360px">
-      <div class="tile"><img src="data:image/svg+xml;base64,PCEtLSBAbGljZW5zZSBsdWNpZGUtc3RhdGljIHYxLjY5LjAgLSBJU0MgLS0+CjxzdmcKICBjbGFzcz0ibHVjaWRlIGx1Y2lkZS1maWxlLWpzb24iCiAgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIgogIHdpZHRoPSIyNCIKICBoZWlnaHQ9IjI0IgogIHZpZXdCb3g9IjAgMCAyNCAyNCIKICBmaWxsPSJub25lIgogIHN0cm9rZT0iIzNkNDY2MCIKICBzdHJva2Utd2lkdGg9IjEuNyIKICBzdHJva2UtbGluZWNhcD0icm91bmQiCiAgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIKPgogIDxwYXRoIGQ9Ik02IDIyYTIgMiAwIDAgMS0yLTJWNGEyIDIgMCAwIDEgMi0yaDhhMi40IDIuNCAwIDAgMSAxLjcwNC43MDZsMy41ODggMy41ODhBMi40IDIuNCAwIDAgMSAyMCA4djEyYTIgMiAwIDAgMS0yIDJ6IiAvPgogIDxwYXRoIGQ9Ik0xNCAydjVhMSAxIDAgMCAwIDEgMWg1IiAvPgogIDxwYXRoIGQ9Ik0xMCAxMmExIDEgMCAwIDAtMSAxdjFhMSAxIDAgMCAxLTEgMSAxIDEgMCAwIDEgMSAxdjFhMSAxIDAgMCAwIDEgMSIgLz4KICA8cGF0aCBkPSJNMTQgMThhMSAxIDAgMCAwIDEtMXYtMWExIDEgMCAwIDEgMS0xIDEgMSAwIDAgMS0xLTF2LTFhMSAxIDAgMCAwLTEtMSIgLz4KPC9zdmc+Cg==" alt=""></div>
-      <div class="name"><span>Redacted JSON</span></div><div class="role"><span>&lt;op&gt;.json</span></div>
-    </div>
-    <div class="node" style="left:534px;top:500px">
-      <div class="tile"><img src="data:image/svg+xml;base64,PCEtLSBAbGljZW5zZSBsdWNpZGUtc3RhdGljIHYxLjY5LjAgLSBJU0MgLS0+CjxzdmcKICBjbGFzcz0ibHVjaWRlIGx1Y2lkZS1maWxlLWxvY2siCiAgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIgogIHdpZHRoPSIyNCIKICBoZWlnaHQ9IjI0IgogIHZpZXdCb3g9IjAgMCAyNCAyNCIKICBmaWxsPSJub25lIgogIHN0cm9rZT0iIzNkNDY2MCIKICBzdHJva2Utd2lkdGg9IjEuNyIKICBzdHJva2UtbGluZWNhcD0icm91bmQiCiAgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIKPgogIDxwYXRoIGQ9Ik00IDkuOFY0YTIgMiAwIDAgMSAyLTJoOGEyLjQgMi40IDAgMCAxIDEuNzA2LjcwNmwzLjU4OCAzLjU4OEEyLjQgMi40IDAgMCAxIDIwIDh2MTJhMiAyIDAgMCAxLTIgMmgtMyIgLz4KICA8cGF0aCBkPSJNMTQgMnY1YTEgMSAwIDAgMCAxIDFoNSIgLz4KICA8cGF0aCBkPSJNOSAxN3YtMmEyIDIgMCAwIDAtNCAwdjIiIC8+CiAgPHJlY3Qgd2lkdGg9IjgiIGhlaWdodD0iNSIgeD0iMyIgeT0iMTciIHJ4PSIxIiAvPgo8L3N2Zz4K" alt=""></div>
-      <div class="name"><span>Raw rows</span></div><div class="role"><span>raw/ · git-ignored</span></div>
+    <div class="node" style="left:674px;top:660px">
+      <div class="tile"><img src="data:image/svg+xml;base64,PHN2ZyBpZD0iYTc1ZTNmM2EtMjY2MS00MTBiLTgyZmItZDMwMGQzN2RlYTJkIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxOCIgaGVpZ2h0PSIxOCIgdmlld0JveD0iMCAwIDE4IDE4Ij48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImFmZjYwZGRmLWVlYzEtNDBiZi04YmY1LWYzZTNiNTBlODgxOCIgeDE9IjkiIHkxPSIxNi4yMSIgeDI9IjkiIHkyPSIwLjYyIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjMWI5M2ViIiAvPjxzdG9wIG9mZnNldD0iMC4yMSIgc3RvcC1jb2xvcj0iIzIwOTVlYiIgLz48c3RvcCBvZmZzZXQ9IjAuNDQiIHN0b3AtY29sb3I9IiMyZTljZWQiIC8+PHN0b3Agb2Zmc2V0PSIwLjY5IiBzdG9wLWNvbG9yPSIjNDVhN2VmIiAvPjxzdG9wIG9mZnNldD0iMC45NSIgc3RvcC1jb2xvcj0iIzY0YjZmMSIgLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiM2YmI5ZjIiIC8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHRpdGxlPkljb24tc2VjdXJpdHktMjQ4PC90aXRsZT48cGF0aCBkPSJNMTYsOC40NGMwLDQuNTctNS41Myw4LjI1LTYuNzMsOWEuNDMuNDMsMCwwLDEtLjQ2LDBDNy41NywxNi42OSwyLDEzLDIsOC40NFYyLjk0YS40NC40NCwwLDAsMSwuNDMtLjQ0QzYuNzcsMi4zOSw1Ljc4LjUsOSwuNXMyLjIzLDEuODksNi41MywyYS40NC40NCwwLDAsMSwuNDMuNDRaIiBmaWxsPSIjMWI5M2ViIiAvPjxwYXRoIGQ9Ik0xNS4zOCw4LjQ4YzAsNC4yLTUuMDcsNy41Ny02LjE3LDguMjVhLjQuNCwwLDAsMS0uNDIsMGMtMS4xLS42OC02LjE3LTQuMDUtNi4xNy04LjI1di01QS40MS40MSwwLDAsMSwzLDNjMy45NC0uMTEsMy0xLjgzLDYtMS44M1MxMS4wNSwyLjkzLDE1LDNhLjQxLjQxLDAsMCwxLC4zOS40WiIgZmlsbD0idXJsKCNhZmY2MGRkZi1lZWMxLTQwYmYtOGJmNS1mM2UzYjUwZTg4MTgpIiAvPjxwYXRoIGQ9Ik05LDYuNTNBMi44OCwyLjg4LDAsMCwxLDExLjg0LDlhLjQ5LjQ5LDAsMCwwLC40OS40aDEuNGEuNDkuNDksMCwwLDAsLjUtLjUzLDUuMjYsNS4yNiwwLDAsMC0xMC40NiwwLC40OS40OSwwLDAsMCwuNS41M2gxLjRBLjQ5LjQ5LDAsMCwwLDYuMTYsOSwyLjg4LDIuODgsMCwwLDEsOSw2LjUzWiIgZmlsbD0iI2MzZjFmZiIgLz48Y2lyY2xlIGN4PSI5IiBjeT0iOS40IiByPSIxLjkxIiBmaWxsPSIjZmZmIiAvPjwvc3ZnPg==" alt=""></div>
+      <div class="name"><span>Microsoft Sentinel</span></div><div class="role"><span>law-huginn · 4 rules</span></div>
     </div>
 
   </div>
   </div>
 
   <div class="legend">
-    <span><span class="sw"></span>action to log</span>
-    <span><span class="sw n"></span>capture</span>
-    <span><span class="sw n dash"></span>manual commit</span>
+    <span><span class="sw"></span>replay to alert</span>
+    <span><span class="sw n"></span>job order and support</span>
   </div>
 
   <div class="foot">
-    <span>Huggin · the job also runs cleanup.sh as a safety net</span>
+    <span>Huginn · replays: Logic App listCallbackUrl, storage listKeys, VM Run Command</span>
     <span>icons: Azure Public Service Icons / svgl / Lucide · made with <a href="https://github.com/caru-ini/stack-diagram" target="_blank" rel="noopener">stack-diagram</a></span>
   </div>
 

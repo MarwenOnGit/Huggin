@@ -4,7 +4,7 @@ Date: 2026-11-04. Status: accepted (stack written; not yet applied).
 
 ## Context
 
-Huggin's coverage claims, and especially its blind-spot claims, rest partly on documentation:
+Huginn's coverage claims, and especially its blind-spot claims, rest partly on documentation:
 "ARM reads are not logged", "the Run Command text is not logged", "X-14 is seen only in
 `AzureActivity`". The project's rule is that only the lab decides what is true (lab evidence
 already overturned two assumptions: duplicate alerts and three rows per Run Command).
@@ -22,7 +22,7 @@ destroyed right after.
 
 - **Own resource group** (`huginn-purple-rg`), own user-assigned identity, own state key. Not
   `infra/lab` (CI acts on it every night) and not `fenrir-lab-prod-rg` (out of bounds for
-  Huggin's code).
+  Huginn's code).
 - **Applied and destroyed by a person.** CI validates and lints it but never applies it, and the
   replay drift check does not include it.
 - **Logging:** the `allLogs` category group on every resource that has resource logs (Logic App,

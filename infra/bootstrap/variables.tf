@@ -19,11 +19,11 @@ variable "location" {
 variable "github_repository" {
   description = "GitHub owner/name. Combined with the numeric IDs below to build the OIDC subjects."
   type        = string
-  default     = "MarwenOnGit/Huggin"
+  default     = "MarwenOnGit/Huginn"
 }
 
 variable "github_owner_id" {
-  description = "Numeric GitHub ID of the repository owner (gh api repos/MarwenOnGit/Huggin --jq .owner.id)."
+  description = "Numeric GitHub ID of the repository owner (gh api repos/MarwenOnGit/Huginn --jq .owner.id)."
   type        = string
   default     = "183097322"
 
@@ -34,7 +34,7 @@ variable "github_owner_id" {
 }
 
 variable "github_repository_id" {
-  description = "Numeric GitHub ID of the repository (gh api repos/MarwenOnGit/Huggin --jq .id)."
+  description = "Numeric GitHub ID of the repository (gh api repos/MarwenOnGit/Huginn --jq .id)."
   type        = string
   default     = "1444286931"
 

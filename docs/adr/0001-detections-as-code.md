@@ -5,7 +5,7 @@ Date: 2026-11-03. Status: accepted.
 ## Context
 
 Sentinel rules can be written in the portal, but portal rules have no review, no history and no
-tests. Huggin has to show that each rule is tied to a Fenrir operation and was proven in a lab.
+tests. Huginn has to show that each rule is tied to a Fenrir operation and was proven in a lab.
 
 ## Decision
 

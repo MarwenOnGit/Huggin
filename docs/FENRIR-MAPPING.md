@@ -1,15 +1,15 @@
-# Fenrir to Huggin coverage matrix
+# Fenrir to Huginn coverage matrix
 
 Operation IDs come from [FENRIR-OPERATIONS.md](FENRIR-OPERATIONS.md). Rules are described in
 [RULE-PROPOSALS.md](RULE-PROPOSALS.md). Rules marked *(new)* are proposed in this review and
-are not in the original Huggin list.
+are not in the original Huginn list.
 
 "Blind spot" = yes means no Sentinel table records the operation in a default setup.
 "Validated" stays "no" until each rule has passed a benign replay in the lab. "Yes" cites the replay runs.
 
 ## Matrix
 
-| Command | Op ID | Operation | Log source | Huggin rule | Blind spot | Validated |
+| Command | Op ID | Operation | Log source | Huginn rule | Blind spot | Validated |
 |---|---|---|---|---|---|---|
 | login | A-02 | Device code sign-in, Azure CLI client ID | `SigninLogs` | `devicecode-azure-mgmt-signin` *(new)*, context for `fenrir-chain` | no | no |
 | login | A-04 | ROPC sign-in (`--auth-flow ropc`) | `SigninLogs` | `devicecode-azure-mgmt-signin` *(new)* (ROPC branch) | no | no |
@@ -39,7 +39,7 @@ are not in the original Huggin list.
 
 ## Blind spots
 
-No rule can close these with the data Huggin collects. They are part of the design, not gaps to hide.
+No rule can close these with the data Huginn collects. They are part of the design, not gaps to hide.
 
 | What | Fenrir ops | Why it is invisible | What would help |
 |---|---|---|---|
@@ -55,7 +55,7 @@ These rules are still worth building, because they cover the next step an operat
 after Fenrir reports an opportunity. Fenrir will not produce a true positive for them, so each
 needs its own lab replay.
 
-| Huggin rule | Why Fenrir does not trigger it | Where Fenrir points at it |
+| Huginn rule | Why Fenrir does not trigger it | Where Fenrir points at it |
 |---|---|---|
 | `rbac-self-assignment` | No PUT to `roleAssignments` anywhere in the code | `core/enumerate/verdict.py`: `ROLE_ASSIGNMENT_WRITE_ROLES` is reported as an opportunity |
 | `uai-attached-to-host` | No PUT/PATCH to any compute resource | `core/enumerate/verdict.py`: `UAI_ASSIGN_ROLES` is reported as an opportunity |

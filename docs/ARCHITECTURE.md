@@ -1,4 +1,4 @@
-# Huggin architecture
+# Huginn architecture
 
 ## Data flow
 
@@ -85,13 +85,13 @@ table missing from the workspace fails to deploy. The static tests enforce this.
 
 | Boundary | Control |
 |---|---|
-| GitHub to Azure | OIDC federated credentials only; no client secret exists for any Huggin app ([ADR 0003](adr/0003-oidc-identities-and-state.md)). Subjects use GitHub's immutable ID form `repo:MarwenOnGit@183097322/Huggin@1444286931:...`. |
+| GitHub to Azure | OIDC federated credentials only; no client secret exists for any Huginn app ([ADR 0003](adr/0003-oidc-identities-and-state.md)). Subjects use GitHub's immutable ID form `repo:MarwenOnGit@183097322/Huginn@1444286931:...`. |
 | Deploy identity | Main branch only. Contributor on `huginn-sentinel-rg` and `huginn-lab-rg`, Monitoring Contributor on the subscription (Activity log setting), blob access to the state container. It runs `terraform plan` in CI; it never applies. |
 | Lab attacker | Only jobs in the `lab-replay` GitHub environment. Contributor on `huginn-lab-rg` only. Never in the watchlist, so everything it does must alert. |
 | Replays | Act only on resources they create in `huginn-lab-rg`; refuse any other resource group or subscription; discard every response; never request a managed-identity token; delete through a trap plus a cleanup sweep that fails if anything is left. |
 | Bootstrap | Applied by a person (Owner and Global Administrator), locally. CI never holds rights to create apps or role assignments. |
 | Watchlist | Exclusions are (principal, scope prefix, operation) triples with an owner, reason and expiry. Never a whole client app ([ADR 0007](adr/0007-watchlist-not-client-app-exclusions.md)). |
-| Out of bounds | `fenrir-lab-prod-rg` (the operator's Fenrir lab): Huggin's code and CI never touch it. |
+| Out of bounds | `fenrir-lab-prod-rg` (the operator's Fenrir lab): Huginn's code and CI never touch it. |
 | Purple-team environment | `huginn-purple-rg` (`infra/purple`, ADR 0008): created and destroyed by a person for one run; CI lints it but never applies it, and the replay drift check excludes it. The attacker is a dedicated user with Contributor on that resource group only. |
 
 ## Stacks

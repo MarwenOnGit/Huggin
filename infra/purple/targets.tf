@@ -145,11 +145,11 @@ resource "azurerm_automation_runbook" "target" {
   runbook_type            = "PowerShell"
   log_verbose             = true
   log_progress            = true
-  description             = "Huggin purple-team canary runbook. Never scheduled, never run."
+  description             = "Huginn purple-team canary runbook. Never scheduled, never run."
   tags                    = local.tags
 
   content = <<-EOT
-    # Huggin purple-team canary runbook. Never scheduled, never run.
+    # Huginn purple-team canary runbook. Never scheduled, never run.
     $apiToken = '${local.canary}'
     Write-Output 'idle'
   EOT

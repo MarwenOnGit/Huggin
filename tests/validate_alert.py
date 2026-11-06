@@ -23,7 +23,8 @@ import uuid
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-RULE_URL = "https://github.com/MarwenOnGit/Huggin/detections/{}"  # same input as infra/sentinel/rules.tf
+# Frozen GUID seed: keeps the pre-rename repo name "Huggin" on purpose. Must match infra/sentinel/rules.tf.
+RULE_URL = "https://github.com/MarwenOnGit/Huggin/detections/{}"
 
 
 def rule_guid(rule_id: str) -> str:

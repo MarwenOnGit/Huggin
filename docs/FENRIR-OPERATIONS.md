@@ -3,7 +3,7 @@
 Source reviewed: Fenrir `main` at commit `5959162`. Read-only review. Nothing was run.
 
 Paths are relative to the Fenrir package root (`src/fenrir/`). Every operation has an ID
-(`A-` auth, `E-` enumerate, `X-` exploit, `P-` post-exploit) that the other Huggin docs reuse.
+(`A-` auth, `E-` enumerate, `X-` exploit, `P-` post-exploit) that the other Huginn docs reuse.
 
 Fenrir uses no Azure SDK. Every call is a raw `requests` call to a hard-coded URL, and
 authentication goes through `msal`. This makes the inventory complete from a `grep` of

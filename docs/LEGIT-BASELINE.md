@@ -1,7 +1,7 @@
 # Legitimate look-alikes and exclusion strategy
 
 This doc covers every Fenrir operation that lands in `AzureActivity`. None land in `AuditLogs`
-(see [FENRIR-OPERATIONS.md](FENRIR-OPERATIONS.md)). It also covers the three Huggin rules that
+(see [FENRIR-OPERATIONS.md](FENRIR-OPERATIONS.md)). It also covers the three Huginn rules that
 Fenrir does not trigger but that watch writes (`rbac-self-assignment`, `uai-attached-to-host`,
 `automation-runbook-run`).
 

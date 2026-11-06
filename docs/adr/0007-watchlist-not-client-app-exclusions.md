@@ -16,9 +16,9 @@ attacker completely. A stolen portal or CLI session looks the same as the owner'
   Expired rows stop excluding.
 - No row may exclude a client app on its own; the static test rejects rows without a principal,
   a scope or an operation.
-- Rows come from a reviewed CSV and from Terraform for Huggin's own identities: the deployment
-  principal (four refresh operations, Huggin resource groups) and named operators
-  (`trusted_operators`: `listKeys` and `listCallbackUrl` only, Huggin resource groups, 90-day
+- Rows come from a reviewed CSV and from Terraform for Huginn's own identities: the deployment
+  principal (four refresh operations, Huginn resource groups) and named operators
+  (`trusted_operators`: `listKeys` and `listCallbackUrl` only, Huginn resource groups, 90-day
   expiry).
 - The lab attacker is never added, so every replay must alert.
 - Repeat behaviour is handled by "new pair" baselines, and deployment context lowers severity

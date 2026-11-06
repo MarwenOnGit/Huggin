@@ -33,6 +33,11 @@ resource "azurerm_sentinel_alert_rule_scheduled" "rule" {
   for_each = local.rules
 
   # Stable GUID per rule ID, so renaming the display name never recreates the rule.
+  # The URL is a frozen seed, not a link: it keeps the pre-rename repo name "Huggin" on purpose.
+  # Changing it changes every rule's GUID and makes Terraform destroy and recreate all rules.
+  # tests/validate_alert.py (RULE_URL) must stay identical. The "Source:" link below is also left
+  # on the old name (GitHub redirects): editing it is a description change the nightly drift gate
+  # in replay.yml would flag until sentinel is applied by hand.
   name                       = uuidv5("url", "https://github.com/MarwenOnGit/Huggin/detections/${each.key}")
   log_analytics_workspace_id = azurerm_sentinel_log_analytics_workspace_onboarding.this.workspace_id
   display_name               = each.value.name

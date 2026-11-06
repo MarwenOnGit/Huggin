@@ -5,7 +5,7 @@ Raw `AzureActivity` rows captured in Phase 3, one file per Fenrir operation: `<o
 [../docs/STATUS.md](../docs/STATUS.md).
 
 Rules for these files:
-- Each one comes from a benign replay on a Huggin lab resource, run with explicit approval.
+- Each one comes from a benign replay on a Huginn lab resource, run with explicit approval.
 - Secrets are redacted before saving: no keys, passwords, SAS signatures, callback URLs, tokens or
   `Authorization` headers. Replays discard command output (`> /dev/null`), so none should be present.
 - Unredacted query output goes to `lab-evidence/raw/`, which is git-ignored, and is deleted after redaction.

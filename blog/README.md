@@ -5,7 +5,7 @@
 > before publishing; keep the numbers in sync with those files.
 
 I wrote [Fenrir](https://github.com/MarwenOnGit/fenrir), a tool that assesses Azure managed
-identities for authorized tests. Huggin is the other side: Microsoft Sentinel rules for each step
+identities for authorized tests. Huginn is the other side: Microsoft Sentinel rules for each step
 Fenrir takes that Azure logs, plus a lab that proves every night that the rules still fire.
 
 ## What there is to detect
@@ -105,4 +105,4 @@ The remaining core rules (X-10, X-14, P-13) need an opt-in lab batch. The identi
 Entra ID P2 trial and a real Fenrir run. There is also a way to keep a 14-day baseline at 5-minute
 speed: Sentinel caps 5-minute rules below a 2-day lookback, so a daily job would write known
 (caller, resource) pairs to a watchlist. Code and docs:
-[github.com/MarwenOnGit/Huggin](https://github.com/MarwenOnGit/Huggin).
+[github.com/MarwenOnGit/Huginn](https://github.com/MarwenOnGit/Huginn).

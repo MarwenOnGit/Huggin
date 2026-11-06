@@ -1,9 +1,9 @@
-# Huggin
+# Huginn
 
-**Fenrir attacks Azure managed identities; Huggin proves Sentinel catches each logged step.**
+**Fenrir attacks Azure managed identities; Huginn proves Sentinel catches each logged step.**
 
-Huggin is the defensive counterpart to [Fenrir](https://github.com/MarwenOnGit/fenrir), an Azure
-security assessment tool for authorized tests and labs. Huggin is a set of Microsoft Sentinel
+Huginn is the defensive counterpart to [Fenrir](https://github.com/MarwenOnGit/fenrir), an Azure
+security assessment tool for authorized tests and labs. Huginn is a set of Microsoft Sentinel
 analytics rules for the actions Fenrir performs, deployed with Terraform, and proven every night
 by replaying benign versions of those actions in a lab subscription and checking that the
 expected alert appears.
@@ -23,7 +23,7 @@ flowchart LR
     I -- "validate_alert.py" --> R
 ```
 
-## What Huggin can and cannot see
+## What Huginn can and cannot see
 
 Fenrir makes no writes. Its entire `AzureActivity` footprint is six POST actions: VM Run Command
 (X-08), App Service publishing credentials (X-10), Logic App callback URL (X-13), Container
@@ -36,7 +36,7 @@ Instances exec (X-14), storage `listKeys` (P-12) and ACR `listCredentials` (P-13
 - **Graph reconnaissance** (E-01 to E-07, X-06) is visible only with Entra ID P1/P2 and
   `MicrosoftGraphActivityLogs`. This tenant has no P1/P2.
 - **What happens on a host** after Run Command or a container exec is not in control-plane logs.
-  Huggin sees that a command was run, not what it did. The command text is not logged either
+  Huginn sees that a command was run, not what it did. The command text is not logged either
   (lab evidence X-08).
 
 ## Rules by tier
@@ -108,10 +108,11 @@ make destroy    # removes the lab and the Sentinel stack (asks first); bootstrap
 
 ## Naming
 
-The project is **Huggin**. Names created before the spelling was corrected keep their original
-form because they are deployed identifiers: the workspace function `HuginnActivity`, the
-watchlist `HuginnTrustedAutomation`, the `huginn-*` resource groups and app registrations, and the
-Sentinel rule titles ("Huginn - ...").
+The project is **Huginn**, the same spelling as the deployed identifiers: the workspace function
+`HuginnActivity`, the watchlist `HuginnTrustedAutomation`, the `huginn-*` resource groups and app
+registrations, and the Sentinel rule titles ("Huginn - ..."). One exception is deliberate: the
+seed URL that `infra/sentinel/rules.tf` and `tests/validate_alert.py` hash into each rule's GUID
+keeps the old repository name `MarwenOnGit/Huggin`, because changing it would recreate every rule.
 
 ## Repository
 
