@@ -13,15 +13,15 @@ expected alert appears.
 > is [docs/STATUS.md](docs/STATUS.md); the coverage matrix is
 > [docs/FENRIR-MAPPING.md](docs/FENRIR-MAPPING.md).
 
-```mermaid
-flowchart LR
-    F["Fenrir (operator)"] -. "same ARM actions" .-> A
-    R["replay.yml<br/>lab attacker (OIDC)"] -- "benign actions on<br/>fresh lab resources" --> A["Azure Resource Manager"]
-    A -- "Activity log" --> W["Log Analytics<br/>AzureActivity"]
-    W --> S["Sentinel rules<br/>(detections/**)"]
-    S --> I["Alerts and incidents"]
-    I -- "validate_alert.py" --> R
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/huginn-azure-dark.png">
+  <img alt="Huginn in Azure: GitHub Actions signs in with OIDC as the lab attacker, acts on huginn-lab-rg, the Activity log flows to Log Analytics and Microsoft Sentinel raises incidents that the workflow reads back. Terraform state lives in huginn-tfstate-rg; the operator's laptop applies the bootstrap." src="docs/diagrams/huginn-azure.png">
+</picture>
+
+What is deployed today. The blue path is the nightly proof: a GitHub Actions job signs in with
+OIDC as the lab attacker, performs a benign Fenrir-shaped action on fresh lab resources, the
+Activity log carries the event to Log Analytics, and Sentinel must raise the alert. Fenrir itself
+causes the same ARM actions. Interactive version: [docs/diagrams/huginn-azure.html](docs/diagrams/huginn-azure.html).
 
 ## What Huginn can and cannot see
 
@@ -70,6 +70,48 @@ plus the 5-minute rule schedule and Sentinel's 5-minute run delay).
 
 Details: [docs/TESTING.md](docs/TESTING.md). Design: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 Interview walkthrough: [docs/DEMO.md](docs/DEMO.md).
+
+### CI: static checks, no Azure
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/huginn-ci-dark.png">
+  <img alt="ci.yml: a push or pull request starts five parallel jobs (static rule tests, KQL parser with self-test, Terraform fmt and validate on four stacks, tflint, checkov in two passes); all five green means safe to merge." src="docs/diagrams/huginn-ci.png">
+</picture>
+
+None of the five jobs signs in to Azure or reads a secret, so pull requests from any branch are
+safe to test. The KQL job also proves the parser still rejects broken fixtures.
+
+### Replay: act like the attacker, then prove the alert
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/huginn-replay-dark.png">
+  <img alt="replay.yml: 1. drift (deploy identity, terraform plan must be empty), 2. replay as the lab attacker on fresh resources in huginn-lab-rg, 3. cleanup, 4. validate that Microsoft Sentinel raised each expected alert within 30 minutes." src="docs/diagrams/huginn-replay.png">
+</picture>
+
+Four jobs, two identities, no Terraform apply: a plan with any change stops the run before the
+replay. Validation polls `SecurityAlert` and records the time to alert.
+
+### Evidence: what Azure really logs
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/huginn-evidence-dark.png">
+  <img alt="evidence.yml: the operator picks operations, the job performs each once as the lab attacker, then capture.py on the operator's laptop reads the rows from Log Analytics, writes redacted JSON to lab-evidence/ and keeps raw rows git-ignored." src="docs/diagrams/huginn-evidence.png">
+</picture>
+
+Started by hand with a list of operations. The redacted rows in `lab-evidence/` are what the rules
+were written from.
+
+### Purple team: a real Fenrir run
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/huginn-purple-dark.png">
+  <img alt="Purple team: the operator deploys huginn-purple-rg with Terraform by hand (VM, Logic App, Automation, Key Vault, Storage, App Service, Container Registry, Container Instances), runs Fenrir as a dedicated attacker user, every resource sends allLogs and Syslog to Log Analytics, the Activity log adds ARM events, Sentinel runs the rules under test, and the purple scripts query and redact the results into lab-evidence/purple/." src="docs/diagrams/huginn-purple.png">
+</picture>
+
+Written, not yet applied, and never run by CI. `make purple-preflight` proves every log source
+reaches `law-huginn` before Fenrir starts; `make purple-capture` collects every row that mentions
+the run's identities or IP (`union *`) and reports any table that contains a canary secret.
+Steps: [docs/PURPLE-TEAM.md](docs/PURPLE-TEAM.md), design: [ADR 0008](docs/adr/0008-purple-environment.md).
 
 ## Quick start
 
@@ -128,6 +170,7 @@ scripts/          replay and evidence helpers
 tests/            static tests, KQL syntax check, alert validation
 lab-evidence/     real AzureActivity rows from lab runs, secrets redacted
 docs/             review docs, status, architecture, testing, cost, demo, ADRs
+docs/diagrams/    the diagrams above: self-contained HTML source, light and dark PNGs
 blog/             draft write-up with screenshots from the lab
 ```
 
