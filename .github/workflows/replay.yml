@@ -2,7 +2,7 @@
 # Red if any requested rule did not fire within the timeout.
 #
 # Identities (docs/adr/0003):
-#   drift, validate  -> huginn-github-deploy (main branch subject; watchlisted for Terraform refresh)
+#   drift, validate  -> huginn-github-deploy (lab-replay environment subject; watchlisted for Terraform refresh)
 #   replay, cleanup  -> huginn-lab-attacker  (lab-replay environment subject; never watchlisted)
 #
 # This workflow does NOT apply Terraform. It checks that the deployed rules match the code
@@ -38,6 +38,7 @@ jobs:
   drift:
     name: Deployed rules match the code
     runs-on: ubuntu-latest
+    environment: lab-replay
     permissions:
       id-token: write
       contents: read
@@ -134,6 +135,7 @@ jobs:
     name: Sentinel raised the expected alerts
     needs: replay
     runs-on: ubuntu-latest
+    environment: lab-replay
     permissions:
       id-token: write
       contents: read
